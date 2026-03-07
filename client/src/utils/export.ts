@@ -20,9 +20,10 @@ export function exportToCsv(filename: string, rows: object[]) {
                     : row[k as keyof typeof row];
                 // Handle strings that contain commas or quotes
                 if (typeof cell === 'string') {
-                    // Prevent CSV formula injection (Excel/Sheets execute cells starting with =, +, -, @)
-                    if (/^[=+\-@]/.test(cell)) {
-                        cell = '\t' + cell;
+                    // Prevent CSV formula injection: prefix dangerous openers with a single-quote.
+                    // Covers =, +, -, @, tab, and leading space — all vectors Excel/Sheets recognise.
+                    if (/^[=+\-@\t ]/.test(cell)) {
+                        cell = "'" + cell;
                     }
                     cell = cell.replace(/"/g, '""');
                     if (cell.search(/("|,|\n)/g) >= 0) {

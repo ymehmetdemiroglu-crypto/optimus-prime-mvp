@@ -23,6 +23,14 @@ export default function Competitive() {
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newAsin) return;
+        if (!/^B[A-Z0-9]{9}$/.test(newAsin)) {
+            setMessage('Invalid ASIN format. Must be 10 characters starting with B (e.g. B08X123456).');
+            return;
+        }
+        if (newBrand.length > 200 || newTitle.length > 500) {
+            setMessage('Brand name (max 200) or product title (max 500) is too long.');
+            return;
+        }
         setAdding(true); setMessage('');
         try {
             await competitiveApi.addCompetitor(newAsin, newBrand, newTitle);

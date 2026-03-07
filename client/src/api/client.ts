@@ -151,8 +151,8 @@ export const chatApi = {
             body: JSON.stringify({ message, history })
         });
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Failed to send chat message: ${err}`);
+            console.error('Chat API error:', response.status);
+            throw new Error('Failed to send chat message. Please try again.');
         }
         const data = await response.json();
         return data as ChatResponse;
@@ -1183,8 +1183,8 @@ export const semanticApi = {
             headers
         });
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Failed to run clustering via backend: ${err}`);
+            console.error('Clustering API error:', response.status);
+            throw new Error('Failed to run keyword clustering. Please try again.');
         }
         const data = await response.json();
         return data.cluster_count;
@@ -1213,8 +1213,8 @@ export const semanticApi = {
             body: JSON.stringify({ campaign_id: campaignId })
         });
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Failed to generate listing via backend: ${err}`);
+            console.error('Listing API error:', response.status);
+            throw new Error('Failed to generate listing. Please try again.');
         }
         const data = await response.json();
         return {
@@ -1280,8 +1280,8 @@ export const semanticApi = {
             body: JSON.stringify({ campaign_id: campaignId })
         });
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Failed to generate SKAGs via backend: ${err}`);
+            console.error('SKAGs API error:', response.status);
+            throw new Error('Failed to generate SKAGs. Please try again.');
         }
         const data = await response.json();
         return data.count;
@@ -1313,8 +1313,8 @@ export const reportsApi = {
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Failed to analyze report: ${err}`);
+            console.error('Report API error:', response.status);
+            throw new Error('Failed to analyze report. Please try again.');
         }
 
         return await response.json() as ReportAnalysisResponse;

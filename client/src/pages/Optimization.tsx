@@ -107,7 +107,16 @@ export default function Optimization() {
 
     // ── Load campaigns ──
     useEffect(() => {
-        campaignApi.getCampaigns().then(setCampaigns).catch(console.error);
+        campaignApi.getCampaigns().then(loaded => {
+            setCampaigns(loaded);
+            // Validate URL param — reject any campaign ID not in the user's list
+            const ids = new Set(loaded.map(c => c.id));
+            if (selectedCampaign && !ids.has(selectedCampaign)) {
+                setSelectedCampaign('');
+                setSearchParams({}, { replace: true });
+            }
+        }).catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // ── Clear state on campaign/tab change ──

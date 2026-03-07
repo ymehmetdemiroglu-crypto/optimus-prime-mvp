@@ -14,6 +14,18 @@ interface ReportAnalysisResponse {
     insights: ReportInsight[];
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+function validateCsvFile(f: File): string | null {
+    if (f.type !== 'text/csv' && f.type !== 'application/csv' && !f.name.endsWith('.csv')) {
+        return 'Please upload a valid CSV file.';
+    }
+    if (f.size > MAX_FILE_SIZE) {
+        return 'File exceeds the 10 MB limit. Please upload a smaller file.';
+    }
+    return null;
+}
+
 export default function Reports() {
     const [file, setFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -35,23 +47,16 @@ export default function Reports() {
         e.preventDefault();
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && droppedFile.name.endsWith('.csv')) {
-            setFile(droppedFile);
-            setError(null);
-        } else {
-            setError('Please upload a valid .csv file.');
-        }
+        if (!droppedFile) return;
+        const validationError = validateCsvFile(droppedFile);
+        if (validationError) { setError(validationError); } else { setFile(droppedFile); setError(null); }
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const selectedFile = e.target.files[0];
-            if (selectedFile.name.endsWith('.csv')) {
-                setFile(selectedFile);
-                setError(null);
-            } else {
-                setError('Please upload a valid .csv file.');
-            }
+            const validationError = validateCsvFile(selectedFile);
+            if (validationError) { setError(validationError); } else { setFile(selectedFile); setError(null); }
         }
     };
 

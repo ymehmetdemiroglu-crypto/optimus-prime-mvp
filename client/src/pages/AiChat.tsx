@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import type { ChatMessage } from '../types';
 
 const HISTORY_PAGE = 50;
+const MAX_MESSAGE_LENGTH = 2000;
 
 export default function AiChat() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -82,7 +83,7 @@ export default function AiChat() {
     }, [historyOffset]);
 
     const handleSend = async (text?: string) => {
-        const messageText = text || input.trim();
+        const messageText = (text || input.trim()).slice(0, MAX_MESSAGE_LENGTH);
         if (!messageText || loading) return;
 
         const userMsg: ChatMessage = { role: 'user', content: messageText, timestamp: new Date().toISOString() };
@@ -194,7 +195,7 @@ export default function AiChat() {
                     <input
                         type="text"
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                         onKeyPress={handleKeyPress}
                         placeholder="Ask Optimus anything about your campaigns..."
                         aria-label="Message input"
