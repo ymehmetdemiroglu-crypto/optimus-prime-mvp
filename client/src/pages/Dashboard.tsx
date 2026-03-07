@@ -1,23 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { dashboardApi, autonomousApi } from '../api/client';
+import { dashboardApi, autonomousApi, pacingApi } from '../api/client';
 import type { AutonomousLog } from '../api/client';
 import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
-import type { DashboardData } from '../types';
+import type { DashboardData, SpendPacing } from '../types';
 
 export default function Dashboard() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [autoLogs, setAutoLogs] = useState<AutonomousLog[]>([]);
+    const [pacing, setPacing] = useState<SpendPacing[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadDashboard = useCallback(async () => {
         try {
-            const [dashboardData, logsData] = await Promise.all([
+            const [dashboardData, logsData, pacingData] = await Promise.all([
                 dashboardApi.getDashboard(),
-                autonomousApi.getLogs(5)
+                autonomousApi.getLogs(5),
+                pacingApi.getAllCampaignPacing().catch(() => []),
             ]);
             setData(dashboardData);
             setAutoLogs(logsData);
+            setPacing(pacingData);
         } catch (error) {
             console.error('Failed to load dashboard:', error);
         } finally {
@@ -66,6 +69,38 @@ export default function Dashboard() {
                 <MetricCard title="CTR" value={`${metrics.ctr}%`} subtitle="Click-Through Rate" accent="prime-blue" trend={metrics.ctr > 0.5 ? 'good' : 'warning'} />
                 <MetricCard title="CVR" value={`${metrics.cvr}%`} subtitle="Conversion Rate" accent="prime-gold" trend={metrics.cvr > 10 ? 'good' : 'warning'} />
             </div>
+
+            {/* Budget Pacing */}
+            {pacing.length > 0 && (
+                <div className="bg-prime-dark/80 backdrop-blur-sm border border-prime-gunmetal/30 p-5 chamfer">
+                    <h3 className="text-xs font-bold text-prime-gunmetal uppercase tracking-widest mb-3">Budget Pacing</h3>
+                    <div className="space-y-2.5">
+                        {pacing.map(p => {
+                            const pct = Math.min(100, p.pace_percentage);
+                            const barColor = p.pacing_status === 'on_track' ? 'bg-emerald-400' : p.pacing_status === 'overspending' ? 'bg-prime-red' : 'bg-yellow-400';
+                            const statusColor = p.pacing_status === 'on_track' ? 'text-emerald-400' : p.pacing_status === 'overspending' ? 'text-prime-red' : 'text-yellow-400';
+                            const statusLabel = p.pacing_status === 'on_track' ? 'On Track' : p.pacing_status === 'overspending' ? 'Overspending' : 'Underspending';
+                            return (
+                                <div key={p.campaign_id} className="flex items-center gap-4 p-2.5 bg-prime-black/40 border border-prime-gunmetal/15 chamfer-sm">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-prime-silver text-sm font-semibold truncate">{p.campaign_name}</span>
+                                            <span className={`text-[10px] font-bold uppercase tracking-widest ${statusColor}`}>{statusLabel}</span>
+                                        </div>
+                                        <div className="w-full bg-prime-darker h-1.5 overflow-hidden">
+                                            <div className={`h-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <div className="flex justify-between mt-1">
+                                            <span className="text-prime-gunmetal text-[10px]">${p.spent_today.toFixed(2)} / ${p.daily_budget.toFixed(2)}</span>
+                                            <span className="text-prime-gunmetal text-[10px]">Projected EOD: ${p.projected_eod_spend.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Sales Chart */}
             <div className="relative bg-prime-dark/80 backdrop-blur-sm border border-prime-gunmetal/30 p-6 chamfer overflow-hidden">

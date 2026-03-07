@@ -218,3 +218,178 @@ export interface CampaignExpansion {
     created_at: string;
     cluster?: SemanticCluster;
 }
+
+// ─── Bid Optimization Upgrades ───
+
+export type HealthStatus = 'excellent' | 'good' | 'at_risk' | 'declining' | 'critical';
+
+export interface KeywordHealth {
+    keyword_id: string;
+    health_score: number;
+    health_status: HealthStatus;
+    performance_score: number;
+    trend_score: number;
+    efficiency_score: number;
+    engagement_score: number;
+    risk_factors: string[];
+}
+
+export interface GuardrailResult {
+    keyword_id: string;
+    previous_bid: number;
+    applied_bid: number;
+    requested_bid: number;
+    was_clipped: boolean;
+}
+
+export interface BatchHistory {
+    batch_id: string;
+    model_used: string;
+    keyword_count: number;
+    total_clipped: number;
+    applied_at: string;
+    is_rolled_back: boolean;
+    avg_change_percent: number;
+}
+
+export interface ProjectedSpend {
+    current_daily_spend: number;
+    projected_daily_spend: number;
+    spend_change: number;
+    spend_change_percent: number;
+}
+
+export interface ModelLeaderboardEntry {
+    model_type: string;
+    total_predictions: number;
+    evaluated_predictions: number;
+    hit_rate: number;
+    avg_improvement: number;
+    avg_acos_change: number;
+    best_streak: number;
+}
+
+export interface NegativeKeywordSuggestion {
+    id: string;
+    search_term: string;
+    total_spend: number;
+    total_clicks: number;
+    total_orders: number;
+    estimated_savings_30d: number;
+    suggested_match_type: 'exact' | 'phrase';
+    reason: string;
+    status?: 'pending' | 'applied' | 'dismissed';
+}
+
+export interface DaypartingHour {
+    hour: number;
+    bid_multiplier: number;
+    avg_cvr: number;
+    avg_roas: number;
+    total_orders: number;
+    confidence: number;
+}
+
+export interface DaypartingSchedule {
+    id: string;
+    campaign_id: string;
+    hour: number;
+    bid_multiplier: number;
+    is_enabled: boolean;
+}
+
+export interface SpendPacing {
+    campaign_id: string;
+    campaign_name: string;
+    daily_budget: number;
+    spent_today: number;
+    hours_elapsed: number;
+    projected_eod_spend: number;
+    pace_percentage: number;
+    pacing_status: 'on_track' | 'overspending' | 'underspending';
+}
+
+export interface RolloutStatus {
+    active: boolean;
+    rollout_id?: string;
+    status?: string;
+    current_stage?: number;
+    total_keywords?: number;
+    model_type?: string;
+    pre_acos?: number;
+    stages?: { stage: number; keyword_count: number; applied: number }[];
+    created_at?: string;
+}
+
+export interface BidExperiment {
+    id: string;
+    campaign_id: string;
+    name: string;
+    model_a: string;
+    model_b: string;
+    split_percent: number;
+    status: 'draft' | 'running' | 'completed' | 'cancelled';
+    started_at: string | null;
+    ended_at: string | null;
+    winner: string | null;
+    confidence_level: number | null;
+    created_at: string;
+}
+
+export interface ExperimentAnalysis {
+    group_a: ExperimentGroupMetrics;
+    group_b: ExperimentGroupMetrics;
+    winner: 'A' | 'B' | 'tie';
+    confidence: number;
+    model_a: string;
+    model_b: string;
+}
+
+export interface ExperimentGroupMetrics {
+    impressions: number;
+    clicks: number;
+    spend: number;
+    sales: number;
+    orders: number;
+    acos: number;
+    ctr: number;
+    cvr: number;
+    roas: number;
+}
+
+export interface CompetitorBidEstimate {
+    keyword_id: string;
+    keyword_text: string;
+    current_bid: number;
+    estimated_competitor_low: number;
+    estimated_competitor_mid: number;
+    estimated_competitor_high: number;
+    competition_level: 'low' | 'medium' | 'high';
+}
+
+export interface AuctionSimulation {
+    keyword_id: string;
+    test_bid: number;
+    simulations: number;
+    estimated_win_rate: number;
+    estimated_avg_position: number;
+    estimated_avg_cpc: number;
+}
+
+export interface PortfolioBudgetAllocation {
+    campaign_id: string;
+    campaign_name: string;
+    current_budget: number;
+    recommended_budget: number;
+    budget_change: number;
+    current_roas: number;
+    marginal_roas: number;
+    expected_roas: number;
+}
+
+export interface BudgetSimulation {
+    current_total_budget: number;
+    new_total_budget: number;
+    additional_budget: number;
+    allocations: PortfolioBudgetAllocation[];
+}

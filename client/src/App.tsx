@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Campaigns from './pages/Campaigns';
 import AiChat from './pages/AiChat';
 import Optimization from './pages/Optimization';
+import Experiments from './pages/Experiments';
+import Portfolio from './pages/Portfolio';
 import Forecasts from './pages/Forecasts';
 import Alerts from './pages/Alerts';
 import Competitive from './pages/Competitive';
@@ -35,6 +37,8 @@ function App() {
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/campaigns" element={<Campaigns />} />
                             <Route path="/optimize" element={<Optimization />} />
+                            <Route path="/experiments" element={<Experiments />} />
+                            <Route path="/portfolio" element={<Portfolio />} />
                             <Route path="/forecasts" element={<Forecasts />} />
                             <Route path="/alerts" element={<Alerts />} />
                             <Route path="/competitive" element={<Competitive />} />

@@ -9,6 +9,8 @@ export default function Navigation() {
         { path: '/', label: 'War Room' },
         { path: '/campaigns', label: 'Campaigns' },
         { path: '/optimize', label: 'Optimize' },
+        { path: '/experiments', label: 'A/B Tests' },
+        { path: '/portfolio', label: 'Portfolio' },
         { path: '/forecasts', label: 'Forecasts' },
         { path: '/competitive', label: 'Intel' },
         { path: '/semantic', label: 'Semantic' },

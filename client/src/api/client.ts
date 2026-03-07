@@ -1,9 +1,10 @@
-﻿import { supabase } from '../lib/supabase';
-import type { DashboardData, DashboardMetrics, SalesDataPoint, AIAction, Campaign, StrategyType, ChatResponse, Keyword, Alert, AlertRule, SearchTerm, SemanticCluster, ListingSuggestion, CampaignExpansion, ComplianceIssue } from '../types';
+import { supabase } from '../lib/supabase';
+import type { DashboardData, DashboardMetrics, SalesDataPoint, AIAction, Campaign, StrategyType, ChatResponse, Keyword, Alert, AlertRule, SearchTerm, SemanticCluster, ListingSuggestion, CampaignExpansion, ComplianceIssue,
+    GuardrailResult, BatchHistory, ProjectedSpend, ModelLeaderboardEntry, NegativeKeywordSuggestion, DaypartingHour, DaypartingSchedule, SpendPacing, RolloutStatus, BidExperiment, ExperimentAnalysis, CompetitorBidEstimate, AuctionSimulation, PortfolioBudgetAllocation, BudgetSimulation, KeywordHealth, HealthStatus
+} from '../types';
 
 export const dashboardApi = {
     getDashboard: async (): Promise<DashboardData> => {
-        // Get all campaigns for aggregate metrics
         const { data: campaigns, error: campError } = await supabase
             .from('campaigns')
             .select('*');
@@ -12,7 +13,6 @@ export const dashboardApi = {
 
         const allCampaigns = campaigns || [];
 
-        // Compute aggregate metrics
         const totalSales = allCampaigns.reduce((sum, c) => sum + Number(c.sales), 0);
         const totalSpend = allCampaigns.reduce((sum, c) => sum + Number(c.spend), 0);
         const totalImpressions = allCampaigns.reduce((sum, c) => sum + c.impressions, 0);
@@ -30,7 +30,6 @@ export const dashboardApi = {
             clicks: totalClicks,
         };
 
-        // Get 30 days of performance data for chart
         const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
         const { data: perfData } = await supabase
             .from('performance_metrics')
@@ -38,7 +37,6 @@ export const dashboardApi = {
             .gte('recorded_at', thirtyDaysAgo)
             .order('recorded_at');
 
-        // Aggregate performance data by date
         const salesByDate = new Map<string, { sales: number; count: number }>();
         for (const row of perfData || []) {
             const date = new Date(row.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -54,7 +52,6 @@ export const dashboardApi = {
             orders: count,
         }));
 
-        // Get recent AI actions
         const { data: actionsData } = await supabase
             .from('ai_actions')
             .select('*')
@@ -144,7 +141,7 @@ export const autonomousApi = {
             .limit(limit);
 
         if (error) throw error;
-        return (data || []) as any; // Cast as any because relation types may be complex for simple view
+        return (data || []) as any;
     },
     runOperator: async (): Promise<number> => {
         const sellerRes = await supabase.rpc('get_my_seller_id');
@@ -210,6 +207,8 @@ export const keywordApi = {
     },
 };
 
+// ─── Bid Recommendation Types ───
+
 export interface BidRecommendation {
     keyword_id: string;
     keyword_text: string;
@@ -217,6 +216,8 @@ export interface BidRecommendation {
     recommended_bid: number;
     multiplier: number;
     confidence: number;
+    health_score?: number;
+    health_status?: HealthStatus;
 }
 
 export const thompsonApi = {
@@ -226,7 +227,7 @@ export const thompsonApi = {
         });
 
         if (error) throw error;
-        return (data || []).map((r: any) => ({
+        const recs = (data || []).map((r: any) => ({
             keyword_id: r.keyword_id,
             keyword_text: r.keyword_text,
             current_bid: Number(r.current_bid),
@@ -234,6 +235,8 @@ export const thompsonApi = {
             multiplier: Number(r.multiplier),
             confidence: Number(r.confidence),
         }));
+
+        return enrichWithHealth(recs, campaignId);
     },
 
     applyRecommendation: async (keywordId: string, newBid: number): Promise<void> => {
@@ -269,6 +272,8 @@ export interface QLearningRecommendation {
     q_value: number;
     state_bucket: string;
     is_explore: boolean;
+    health_score?: number;
+    health_status?: HealthStatus;
 }
 
 export const qLearningApi = {
@@ -278,7 +283,7 @@ export const qLearningApi = {
         });
 
         if (error) throw error;
-        return (data || []).map((r: any) => ({
+        const recs = (data || []).map((r: any) => ({
             keyword_id: r.keyword_id,
             keyword_text: r.keyword_text,
             current_bid: Number(r.current_bid),
@@ -288,6 +293,8 @@ export const qLearningApi = {
             state_bucket: r.state_bucket,
             is_explore: r.is_explore,
         }));
+
+        return enrichWithHealth(recs, campaignId);
     },
 
     applyRecommendation: async (keywordId: string, newBid: number): Promise<void> => {
@@ -369,6 +376,10 @@ export interface EnsembleRecommendation {
     q_learning_multiplier: number;
     forecast_weight: number;
     forecast_multiplier: number;
+    health_score?: number;
+    health_status?: HealthStatus;
+    competition_level?: 'low' | 'medium' | 'high';
+    competitor_bid_estimate?: number;
 }
 
 export const ensembleApi = {
@@ -378,7 +389,7 @@ export const ensembleApi = {
         });
 
         if (error) throw error;
-        return (data || []).map((r: any) => ({
+        const recs = (data || []).map((r: any) => ({
             keyword_id: r.keyword_id,
             keyword_text: r.keyword_text,
             current_bid: Number(r.current_bid),
@@ -391,9 +402,23 @@ export const ensembleApi = {
             forecast_weight: Number(r.forecast_weight),
             forecast_multiplier: Number(r.forecast_multiplier),
         }));
+
+        const [enriched, competitors] = await Promise.all([
+            enrichWithHealth(recs, campaignId),
+            competitorApi.estimateBids(campaignId).catch(() => []),
+        ]);
+
+        const competitorMap = new Map(competitors.map(c => [c.keyword_id, c]));
+        return enriched.map(rec => {
+            const comp = competitorMap.get(rec.keyword_id);
+            return {
+                ...rec,
+                competition_level: comp?.competition_level,
+                competitor_bid_estimate: comp?.estimated_competitor_mid,
+            };
+        });
     },
 
-    // We can reuse the Q-Learning / Thompson structure for apply methods
     applyRecommendation: async (keywordId: string, newBid: number): Promise<void> => {
         const { error } = await supabase
             .from('keywords')
@@ -416,6 +441,409 @@ export const ensembleApi = {
         return applied;
     },
 };
+
+// ─── Upgrade 1: Guardrails API ───
+
+export const guardrailApi = {
+    applyWithGuardrails: async (keywordId: string, newBid: number, model: string, batchId: string): Promise<GuardrailResult> => {
+        const { data, error } = await supabase.rpc('apply_bid_with_guardrails', {
+            p_keyword_id: keywordId,
+            p_new_bid: newBid,
+            p_model: model,
+            p_batch_id: batchId,
+        });
+        if (error) throw error;
+        return data as GuardrailResult;
+    },
+
+    applyAllWithGuardrails: async (recommendations: { keyword_id: string; recommended_bid: number; current_bid: number }[], model: string): Promise<{ applied: number; clipped: number; batchId: string }> => {
+        const batchId = crypto.randomUUID();
+        let applied = 0;
+        let clipped = 0;
+
+        for (const rec of recommendations) {
+            if (rec.recommended_bid !== rec.current_bid) {
+                const result = await guardrailApi.applyWithGuardrails(rec.keyword_id, rec.recommended_bid, model, batchId);
+                applied++;
+                if (result.was_clipped) clipped++;
+            }
+        }
+
+        return { applied, clipped, batchId };
+    },
+
+    rollbackBatch: async (batchId: string): Promise<number> => {
+        const { data, error } = await supabase.rpc('rollback_bid_batch', { p_batch_id: batchId });
+        if (error) throw error;
+        return data as number;
+    },
+
+    getBatchHistory: async (): Promise<BatchHistory[]> => {
+        const sellerRes = await supabase.rpc('get_my_seller_id');
+        if (sellerRes.error || !sellerRes.data) return [];
+
+        const { data, error } = await supabase.rpc('get_batch_history', {
+            p_seller_id: sellerRes.data,
+            p_limit: 20,
+        });
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            batch_id: r.batch_id,
+            model_used: r.model_used,
+            keyword_count: Number(r.keyword_count),
+            total_clipped: Number(r.total_clipped),
+            applied_at: r.applied_at,
+            is_rolled_back: r.is_rolled_back,
+            avg_change_percent: Number(r.avg_change_percent),
+        }));
+    },
+
+    getProjectedSpend: async (campaignId: string, recommendations: { keyword_id: string; recommended_bid: number }[]): Promise<ProjectedSpend> => {
+        const { data, error } = await supabase.rpc('get_projected_spend', {
+            p_campaign_id: campaignId,
+            p_recommendations: JSON.stringify(recommendations),
+        });
+        if (error) throw error;
+        return data as ProjectedSpend;
+    },
+};
+
+// ─── Upgrade 9: Model Performance Tracking ───
+
+export const modelTrackingApi = {
+    logPrediction: async (keywordId: string, campaignId: string, modelType: string, recommendedBid: number, actualBid: number, previousBid: number): Promise<string> => {
+        const { data, error } = await supabase.rpc('log_model_prediction', {
+            p_keyword_id: keywordId,
+            p_campaign_id: campaignId,
+            p_model_type: modelType,
+            p_recommended_bid: recommendedBid,
+            p_actual_bid: actualBid,
+            p_previous_bid: previousBid,
+        });
+        if (error) throw error;
+        return data as string;
+    },
+
+    evaluatePredictions: async (daysAgo: number = 7): Promise<number> => {
+        const { data, error } = await supabase.rpc('evaluate_model_predictions', { p_days_ago: daysAgo });
+        if (error) throw error;
+        return data as number;
+    },
+
+    getLeaderboard: async (): Promise<ModelLeaderboardEntry[]> => {
+        const { data, error } = await supabase.rpc('get_model_leaderboard');
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            model_type: r.model_type,
+            total_predictions: Number(r.total_predictions),
+            evaluated_predictions: Number(r.evaluated_predictions),
+            hit_rate: Number(r.hit_rate),
+            avg_improvement: Number(r.avg_improvement),
+            avg_acos_change: Number(r.avg_acos_change),
+            best_streak: Number(r.best_streak),
+        }));
+    },
+};
+
+// ─── Upgrade 4: Keyword Health ───
+
+export const healthApi = {
+    getCampaignHealth: async (campaignId: string): Promise<KeywordHealth[]> => {
+        const { data, error } = await supabase.rpc('campaign_keyword_health', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            keyword_id: r.keyword_id,
+            keyword_text: r.keyword_text,
+            health_score: Number(r.health_score),
+            health_status: r.health_status as HealthStatus,
+            performance_score: 0,
+            trend_score: 0,
+            efficiency_score: 0,
+            engagement_score: 0,
+            risk_factors: r.risk_factors || [],
+        }));
+    },
+};
+
+// Helper to enrich recommendations with health scores
+async function enrichWithHealth<T extends { keyword_id: string }>(recs: T[], campaignId: string): Promise<(T & { health_score?: number; health_status?: HealthStatus })[]> {
+    try {
+        const healthData = await healthApi.getCampaignHealth(campaignId);
+        const healthMap = new Map(healthData.map(h => [h.keyword_id, h]));
+        return recs.map(rec => {
+            const h = healthMap.get(rec.keyword_id);
+            return { ...rec, health_score: h?.health_score, health_status: h?.health_status };
+        });
+    } catch {
+        return recs;
+    }
+}
+
+// ─── Upgrade 7: Negative Keywords ───
+
+export const negativeKeywordApi = {
+    discover: async (campaignId: string): Promise<NegativeKeywordSuggestion[]> => {
+        const { data, error } = await supabase.rpc('discover_negative_keywords', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            id: r.id,
+            search_term: r.search_term,
+            total_spend: Number(r.total_spend),
+            total_clicks: Number(r.total_clicks),
+            total_orders: Number(r.total_orders),
+            estimated_savings_30d: Number(r.estimated_savings_30d),
+            suggested_match_type: r.suggested_match_type,
+            reason: r.reason,
+        }));
+    },
+
+    applySuggestion: async (suggestionId: string): Promise<void> => {
+        const { error } = await supabase
+            .from('negative_keyword_suggestions')
+            .update({ status: 'applied' })
+            .eq('id', suggestionId);
+        if (error) throw error;
+    },
+
+    dismissSuggestion: async (suggestionId: string): Promise<void> => {
+        const { error } = await supabase
+            .from('negative_keyword_suggestions')
+            .update({ status: 'dismissed' })
+            .eq('id', suggestionId);
+        if (error) throw error;
+    },
+};
+
+// ─── Upgrade 5: Dayparting ───
+
+export const daypartingApi = {
+    computeSchedule: async (campaignId: string): Promise<DaypartingHour[]> => {
+        const { data, error } = await supabase.rpc('compute_dayparting_schedule', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            hour: Number(r.hour),
+            bid_multiplier: Number(r.bid_multiplier),
+            avg_cvr: Number(r.avg_cvr),
+            avg_roas: Number(r.avg_roas),
+            total_orders: Number(r.total_orders),
+            confidence: Number(r.confidence),
+        }));
+    },
+
+    getSchedule: async (campaignId: string): Promise<DaypartingSchedule[]> => {
+        const { data, error } = await supabase
+            .from('dayparting_schedules')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .order('hour');
+        if (error) throw error;
+        return (data || []) as DaypartingSchedule[];
+    },
+
+    updateHourMultiplier: async (campaignId: string, hour: number, multiplier: number): Promise<void> => {
+        const { error } = await supabase
+            .from('dayparting_schedules')
+            .upsert({ campaign_id: campaignId, hour, bid_multiplier: multiplier, updated_at: new Date().toISOString() }, { onConflict: 'campaign_id,hour' });
+        if (error) throw error;
+    },
+};
+
+// ─── Upgrade 3: Budget Pacing ───
+
+export const pacingApi = {
+    getSpendPacing: async (campaignId: string): Promise<SpendPacing> => {
+        const { data, error } = await supabase.rpc('get_spend_pacing', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return data as SpendPacing;
+    },
+
+    getPaceModifier: async (campaignId: string): Promise<number> => {
+        const { data, error } = await supabase.rpc('pace_bid_modifier', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return data as number;
+    },
+
+    getAllCampaignPacing: async (): Promise<SpendPacing[]> => {
+        const campaigns = await campaignApi.getCampaigns();
+        const active = campaigns.filter(c => c.status === 'active');
+        const results: SpendPacing[] = [];
+        for (const c of active) {
+            try {
+                const pacing = await pacingApi.getSpendPacing(c.id);
+                results.push(pacing);
+            } catch { /* skip */ }
+        }
+        return results;
+    },
+};
+
+// ─── Upgrade 10: Staged Rollout ───
+
+export const rolloutApi = {
+    createRollout: async (campaignId: string, modelType: string, recommendations: { keyword_id: string; recommended_bid: number }[]): Promise<string> => {
+        const { data, error } = await supabase.rpc('create_staged_rollout', {
+            p_campaign_id: campaignId,
+            p_model_type: modelType,
+            p_recommendations: JSON.stringify(recommendations),
+        });
+        if (error) throw error;
+        return data as string;
+    },
+
+    advanceStage: async (rolloutId: string): Promise<{ status: string; stage_advanced_to?: number; current_acos?: number; reason?: string }> => {
+        const { data, error } = await supabase.rpc('advance_rollout_stage', { p_rollout_id: rolloutId });
+        if (error) throw error;
+        return data as any;
+    },
+
+    rollbackRollout: async (rolloutId: string): Promise<number> => {
+        const { data, error } = await supabase.rpc('rollback_rollout', { p_rollout_id: rolloutId });
+        if (error) throw error;
+        return data as number;
+    },
+
+    getRolloutStatus: async (campaignId: string): Promise<RolloutStatus> => {
+        const { data, error } = await supabase.rpc('get_rollout_status', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return data as RolloutStatus;
+    },
+};
+
+// ─── Upgrade 8: A/B Experiments ───
+
+export const experimentApi = {
+    create: async (campaignId: string, name: string, modelA: string, modelB: string, split: number = 50): Promise<string> => {
+        const { data, error } = await supabase.rpc('create_experiment', {
+            p_campaign_id: campaignId,
+            p_name: name,
+            p_model_a: modelA,
+            p_model_b: modelB,
+            p_split: split,
+        });
+        if (error) throw error;
+        return data as string;
+    },
+
+    start: async (experimentId: string): Promise<void> => {
+        const { error } = await supabase.rpc('start_experiment', { p_experiment_id: experimentId });
+        if (error) throw error;
+    },
+
+    stop: async (experimentId: string): Promise<void> => {
+        const { error } = await supabase.rpc('stop_experiment', { p_experiment_id: experimentId });
+        if (error) throw error;
+    },
+
+    analyze: async (experimentId: string): Promise<ExperimentAnalysis> => {
+        const { data, error } = await supabase.rpc('analyze_experiment', { p_experiment_id: experimentId });
+        if (error) throw error;
+        return data as ExperimentAnalysis;
+    },
+
+    recordMetrics: async (experimentId: string): Promise<number> => {
+        const { data, error } = await supabase.rpc('record_experiment_metrics', { p_experiment_id: experimentId });
+        if (error) throw error;
+        return data as number;
+    },
+
+    getAll: async (): Promise<BidExperiment[]> => {
+        const { data, error } = await supabase
+            .from('bid_experiments')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []) as BidExperiment[];
+    },
+
+    getForCampaign: async (campaignId: string): Promise<BidExperiment[]> => {
+        const { data, error } = await supabase
+            .from('bid_experiments')
+            .select('*')
+            .eq('campaign_id', campaignId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []) as BidExperiment[];
+    },
+};
+
+// ─── Upgrade 6: Competitor Analysis ───
+
+export const competitorApi = {
+    estimateBids: async (campaignId: string): Promise<CompetitorBidEstimate[]> => {
+        const { data, error } = await supabase.rpc('estimate_competitor_bids', { p_campaign_id: campaignId });
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            keyword_id: r.keyword_id,
+            keyword_text: r.keyword_text,
+            current_bid: Number(r.current_bid),
+            estimated_competitor_low: Number(r.estimated_competitor_low),
+            estimated_competitor_mid: Number(r.estimated_competitor_mid),
+            estimated_competitor_high: Number(r.estimated_competitor_high),
+            competition_level: r.competition_level,
+        }));
+    },
+
+    simulateAuction: async (keywordId: string, bid: number, simulations: number = 1000): Promise<AuctionSimulation> => {
+        const { data, error } = await supabase.rpc('simulate_auction', {
+            p_keyword_id: keywordId,
+            p_bid: bid,
+            p_num_simulations: simulations,
+        });
+        if (error) throw error;
+        return data as AuctionSimulation;
+    },
+};
+
+// ─── Upgrade 2: Portfolio Budget Optimizer ───
+
+export const portfolioApi = {
+    optimizeBudget: async (totalBudget: number): Promise<PortfolioBudgetAllocation[]> => {
+        const sellerRes = await supabase.rpc('get_my_seller_id');
+        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+
+        const { data, error } = await supabase.rpc('optimize_portfolio_budget', {
+            p_seller_id: sellerRes.data,
+            p_total_budget: totalBudget,
+        });
+        if (error) throw error;
+        return (data || []).map((r: any) => ({
+            campaign_id: r.campaign_id,
+            campaign_name: r.campaign_name,
+            current_budget: Number(r.current_budget),
+            recommended_budget: Number(r.recommended_budget),
+            budget_change: Number(r.budget_change),
+            current_roas: Number(r.current_roas),
+            marginal_roas: Number(r.marginal_roas),
+            expected_roas: Number(r.expected_roas),
+        }));
+    },
+
+    simulateBudgetChange: async (additionalBudget: number): Promise<BudgetSimulation> => {
+        const sellerRes = await supabase.rpc('get_my_seller_id');
+        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+
+        const { data, error } = await supabase.rpc('simulate_budget_change', {
+            p_seller_id: sellerRes.data,
+            p_additional_budget: additionalBudget,
+        });
+        if (error) throw error;
+        return data as BudgetSimulation;
+    },
+
+    applyBudgetRecommendations: async (allocations: { campaign_id: string; recommended_budget: number }[]): Promise<number> => {
+        let applied = 0;
+        for (const alloc of allocations) {
+            const { error } = await supabase
+                .from('campaigns')
+                .update({ daily_budget: alloc.recommended_budget, updated_at: new Date().toISOString() })
+                .eq('id', alloc.campaign_id);
+            if (!error) applied++;
+        }
+        return applied;
+    },
+};
+
+// ─── Existing APIs (alerts, semantic, etc.) ───
 
 export const alertApi = {
     getAlerts: async (options?: { unreadOnly?: boolean }): Promise<Alert[]> => {
@@ -588,17 +1016,14 @@ export const integrationApi = {
     },
 
     simulateSync: async (syncType: string): Promise<void> => {
-        // 1. Mark as in-progress
         const { data: logId, error: startError } = await supabase.rpc('simulate_sp_api_sync', {
             p_sync_type: syncType
         });
 
         if (startError) throw startError;
 
-        // 2. Wait 3 seconds to simulate work
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // 3. Mark as complete
         const { error: endError } = await supabase.rpc('complete_sp_api_sync', {
             p_log_id: logId,
             p_records: Math.floor(Math.random() * 500) + 10,
@@ -672,13 +1097,11 @@ function mapCampaignRow(row: any): Campaign {
     };
 }
 
-// â”€â”€â”€ Semantic Optimization API (Cosmo & Rufus) â”€â”€â”€
+// ─── Semantic Optimization API (Cosmo & Rufus) ───
 
-// Helper: cast supabase for tables not yet in generated types
 const db = (table: string) => (supabase as any).from(table);
 
 export const semanticApi = {
-    // â”€â”€ Search Terms â”€â”€
     getSearchTerms: async (campaignId: string): Promise<SearchTerm[]> => {
         const { data, error } = await db('search_terms')
             .select('*')
@@ -693,7 +1116,6 @@ export const semanticApi = {
         if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
         const sellerId = sellerRes.data;
 
-        // Generate realistic mock STR data
         const sampleQueries = [
             'wireless bluetooth earbuds', 'noise cancelling headphones', 'earbuds with microphone',
             'bluetooth earphones waterproof', 'wireless earbuds for running', 'true wireless earbuds',
@@ -732,7 +1154,6 @@ export const semanticApi = {
         return terms.length;
     },
 
-    // â”€â”€ Semantic Clustering â”€â”€
     getClusters: async (campaignId: string): Promise<SemanticCluster[]> => {
         const { data, error } = await db('semantic_clusters')
             .select('*')
@@ -763,7 +1184,6 @@ export const semanticApi = {
         return data.cluster_count;
     },
 
-    // â”€â”€ Listing Suggestions (Cosmo/Rufus) â”€â”€
     getListingSuggestions: async (campaignId: string): Promise<ListingSuggestion[]> => {
         const { data, error } = await db('listing_suggestions')
             .select('*, semantic_clusters(cluster_label)')
@@ -808,19 +1228,16 @@ export const semanticApi = {
         const issues: ComplianceIssue[] = [];
         const title = suggestion.suggested_title || '';
 
-        // Title checks
         if (title.length > 200) issues.push({ field: 'title', issue: `Title exceeds 200 characters (${title.length})`, severity: 'error' });
         if (title.length > 150) issues.push({ field: 'title', issue: `Title is long (${title.length}/200). Consider shortening for mobile`, severity: 'warning' });
         if (/[!$%]/.test(title)) issues.push({ field: 'title', issue: 'Title contains prohibited special characters', severity: 'error' });
         if (/\b(best|top|#1|guaranteed)\bi/i.test(title)) issues.push({ field: 'title', issue: 'Title contains superlative claims that violate Amazon policy', severity: 'error' });
 
-        // Bullet checks
         const bullets = (suggestion.suggested_bullets || []) as string[];
         bullets.forEach((b: string, i: number) => {
             if (b.length > 500) issues.push({ field: `bullet_${i + 1}`, issue: `Bullet ${i + 1} exceeds 500 characters`, severity: 'warning' });
         });
 
-        // Backend terms check
         const backend = suggestion.suggested_backend_terms || '';
         if (backend.length > 250) issues.push({ field: 'backend_terms', issue: `Backend terms exceed 250 bytes (${backend.length})`, severity: 'error' });
 
@@ -835,7 +1252,6 @@ export const semanticApi = {
         return { ...updated, suggested_bullets: updated.suggested_bullets || [], aplus_keywords: updated.aplus_keywords || [], compliance_issues: issues } as ListingSuggestion;
     },
 
-    // â”€â”€ Campaign Expansions (SKAG) â”€â”€
     getCampaignExpansions: async (campaignId: string): Promise<CampaignExpansion[]> => {
         const { data, error } = await db('campaign_expansions')
             .select('*, semantic_clusters(cluster_label)')
