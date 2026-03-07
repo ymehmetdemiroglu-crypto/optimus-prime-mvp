@@ -4,6 +4,28 @@ import type {
     GuardrailResult, BatchHistory, ProjectedSpend, ModelLeaderboardEntry, NegativeKeywordSuggestion, DaypartingHour, DaypartingSchedule, SpendPacing, RolloutStatus, BidExperiment, ExperimentAnalysis, CompetitorBidEstimate, AuctionSimulation, PortfolioBudgetAllocation, BudgetSimulation, KeywordHealth, HealthStatus
 } from '../types';
 
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8001';
+
+/**
+ * Shared helper: apply a list of bid recommendations to the keywords table.
+ * Returns the count of successfully applied updates.
+ */
+async function applyBidRecommendations(
+    recommendations: { keyword_id: string; recommended_bid: number; current_bid: number }[]
+): Promise<number> {
+    let applied = 0;
+    for (const rec of recommendations) {
+        if (rec.recommended_bid !== rec.current_bid) {
+            const { error } = await supabase
+                .from('keywords')
+                .update({ bid: rec.recommended_bid, updated_at: new Date().toISOString() })
+                .eq('id', rec.keyword_id);
+            if (!error) applied++;
+        }
+    }
+    return applied;
+}
+
 /**
  * Get the current Supabase session token and return headers
  * suitable for authenticated fetch() calls to the Python FastAPI backend.
@@ -123,7 +145,7 @@ export const campaignApi = {
 export const chatApi = {
     sendMessage: async (message: string, history: { role: string, content: string }[] = []): Promise<ChatResponse> => {
         const headers = await getAuthHeaders('application/json');
-        const response = await fetch(`http://localhost:8001/api/v1/chat`, {
+        const response = await fetch(`${API_BASE}/api/v1/chat`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ message, history })
@@ -264,19 +286,8 @@ export const thompsonApi = {
         if (error) throw error;
     },
 
-    applyAll: async (recommendations: BidRecommendation[]): Promise<number> => {
-        let applied = 0;
-        for (const rec of recommendations) {
-            if (rec.recommended_bid !== rec.current_bid) {
-                const { error } = await supabase
-                    .from('keywords')
-                    .update({ bid: rec.recommended_bid, updated_at: new Date().toISOString() })
-                    .eq('id', rec.keyword_id);
-                if (!error) applied++;
-            }
-        }
-        return applied;
-    },
+    applyAll: (recommendations: BidRecommendation[]): Promise<number> =>
+        applyBidRecommendations(recommendations),
 };
 
 export interface QLearningRecommendation {
@@ -321,19 +332,8 @@ export const qLearningApi = {
         if (error) throw error;
     },
 
-    applyAll: async (recommendations: QLearningRecommendation[]): Promise<number> => {
-        let applied = 0;
-        for (const rec of recommendations) {
-            if (rec.recommended_bid !== rec.current_bid) {
-                const { error } = await supabase
-                    .from('keywords')
-                    .update({ bid: rec.recommended_bid, updated_at: new Date().toISOString() })
-                    .eq('id', rec.keyword_id);
-                if (!error) applied++;
-            }
-        }
-        return applied;
-    },
+    applyAll: (recommendations: QLearningRecommendation[]): Promise<number> =>
+        applyBidRecommendations(recommendations),
 };
 
 export interface CampaignForecast {
@@ -443,19 +443,8 @@ export const ensembleApi = {
         if (error) throw error;
     },
 
-    applyAll: async (recommendations: EnsembleRecommendation[]): Promise<number> => {
-        let applied = 0;
-        for (const rec of recommendations) {
-            if (rec.recommended_bid !== rec.current_bid) {
-                const { error } = await supabase
-                    .from('keywords')
-                    .update({ bid: rec.recommended_bid, updated_at: new Date().toISOString() })
-                    .eq('id', rec.keyword_id);
-                if (!error) applied++;
-            }
-        }
-        return applied;
-    },
+    applyAll: (recommendations: EnsembleRecommendation[]): Promise<number> =>
+        applyBidRecommendations(recommendations),
 };
 
 // ─── Upgrade 1: Guardrails API ───
@@ -1189,7 +1178,7 @@ export const semanticApi = {
 
     runClustering: async (campaignId: string): Promise<number> => {
         const headers = await getAuthHeaders('application/json');
-        const response = await fetch(`http://localhost:8001/api/v1/semantic/cluster/${campaignId}`, {
+        const response = await fetch(`${API_BASE}/api/v1/semantic/cluster/${campaignId}`, {
             method: 'POST',
             headers
         });
@@ -1218,7 +1207,7 @@ export const semanticApi = {
 
     generateListingSuggestion: async (clusterId: string, campaignId: string): Promise<ListingSuggestion> => {
         const headers = await getAuthHeaders('application/json');
-        const response = await fetch(`http://localhost:8001/api/v1/semantic/listing/${clusterId}`, {
+        const response = await fetch(`${API_BASE}/api/v1/semantic/listing/${clusterId}`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ campaign_id: campaignId })
@@ -1285,7 +1274,7 @@ export const semanticApi = {
 
     generateCampaignExpansions: async (clusterId: string, campaignId: string): Promise<number> => {
         const headers = await getAuthHeaders('application/json');
-        const response = await fetch(`http://localhost:8001/api/v1/semantic/campaigns/${clusterId}`, {
+        const response = await fetch(`${API_BASE}/api/v1/semantic/campaigns/${clusterId}`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ campaign_id: campaignId })
@@ -1317,7 +1306,7 @@ export const reportsApi = {
         formData.append('file', file);
 
         const authHeaders = await getAuthHeaders();
-        const response = await fetch(`http://localhost:8001/api/v1/reports/upload`, {
+        const response = await fetch(`${API_BASE}/api/v1/reports/upload`, {
             method: 'POST',
             headers: authHeaders,
             body: formData,

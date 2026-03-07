@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { portfolioApi, campaignApi } from '../api/client';
 import type { Campaign, PortfolioBudgetAllocation, BudgetSimulation } from '../types';
-
-const fmt = (v: number) => `$${v.toFixed(2)}`;
-const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+import { fmtDollar as fmt, fmtPct } from '../utils/formatting';
 
 const CAMPAIGN_COLORS = [
     'bg-prime-energon', 'bg-prime-blue', 'bg-emerald-400', 'bg-amber-400',

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     campaignApi,
     thompsonApi,
@@ -53,10 +54,15 @@ interface ConfirmModalState {
 // ─── Main Component ───
 
 export default function Optimization() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
     // ── Shared state ──
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [selectedCampaign, setSelectedCampaign] = useState('');
+    const [selectedCampaign, setSelectedCampaign] = useState(searchParams.get('campaign') ?? '');
     const [activeTab, setActiveTab] = useState<OptimizationTab>('thompson');
+
+    // Cache loaded tab data so switching tabs doesn't re-fetch
+    const tabCache = useRef<Partial<Record<OptimizationTab, unknown>>>({});
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
@@ -171,23 +177,32 @@ export default function Optimization() {
     // ── Generate recommendations ──
     const handleGenerate = async () => {
         if (!selectedCampaign) return;
+
+        // Return cached results for this tab if available
+        if (tabCache.current[activeTab]) {
+            if (activeTab === 'thompson') setThompsonRecs(tabCache.current['thompson'] as BidRecommendation[]);
+            else if (activeTab === 'q-learning') setQLearningRecs(tabCache.current['q-learning'] as QLearningRecommendation[]);
+            else if (activeTab === 'ensemble') setEnsembleRecs(tabCache.current['ensemble'] as EnsembleRecommendation[]);
+            return;
+        }
+
         setLoading(true);
         setApplied(new Set());
         setBatchResult(null);
         setMessage('');
         try {
             if (activeTab === 'thompson') {
-                setThompsonRecs(
-                    await thompsonApi.getCampaignRecommendations(selectedCampaign)
-                );
+                const recs = await thompsonApi.getCampaignRecommendations(selectedCampaign);
+                setThompsonRecs(recs);
+                tabCache.current['thompson'] = recs;
             } else if (activeTab === 'q-learning') {
-                setQLearningRecs(
-                    await qLearningApi.getCampaignRecommendations(selectedCampaign)
-                );
+                const recs = await qLearningApi.getCampaignRecommendations(selectedCampaign);
+                setQLearningRecs(recs);
+                tabCache.current['q-learning'] = recs;
             } else if (activeTab === 'ensemble') {
-                setEnsembleRecs(
-                    await ensembleApi.getCampaignRecommendations(selectedCampaign)
-                );
+                const recs = await ensembleApi.getCampaignRecommendations(selectedCampaign);
+                setEnsembleRecs(recs);
+                tabCache.current['ensemble'] = recs;
             }
         } catch (error) {
             console.error('Failed to generate recommendations:', error);
@@ -264,6 +279,8 @@ export default function Optimization() {
             );
             setApplied(new Set(currentRecs.map((r) => r.keyword_id)));
             setBatchResult(result);
+            // Invalidate cache for this tab so next Generate fetches fresh bids
+            delete tabCache.current[activeTab];
             showMessage(
                 `Applied ${result.applied} bids (${result.clipped} clipped by guardrails) via ${tabConfig[activeTab].title}`
             );
@@ -494,7 +511,15 @@ export default function Optimization() {
                             </label>
                             <select
                                 value={selectedCampaign}
-                                onChange={(e) => setSelectedCampaign(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedCampaign(e.target.value);
+                                    tabCache.current = {};
+                                    if (e.target.value) {
+                                        setSearchParams({ campaign: e.target.value }, { replace: true });
+                                    } else {
+                                        setSearchParams({}, { replace: true });
+                                    }
+                                }}
                                 className="input"
                             >
                                 <option value="">Select a campaign...</option>

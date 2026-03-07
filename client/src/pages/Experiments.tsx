@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { experimentApi, campaignApi } from '../api/client';
 import type { Campaign, BidExperiment, ExperimentAnalysis, ExperimentGroupMetrics } from '../types';
+import { fmt, fmtPct, fmtDollar } from '../utils/formatting';
 
 const MODEL_LABELS: Record<string, string> = {
     thompson: 'Model Alpha',
@@ -67,10 +68,6 @@ function MetricRow({ label, a, b, winner, format }: { label: string; a: number; 
 }
 
 function AnalysisPanel({ analysis, onClose }: { analysis: ExperimentAnalysis; onClose: () => void }) {
-    const fmt = (v: number) => v.toFixed(2);
-    const fmtPct = (v: number) => `${v.toFixed(2)}%`;
-    const fmtDollar = (v: number) => `$${v.toFixed(2)}`;
-
     const a = analysis.group_a;
     const b = analysis.group_b;
 

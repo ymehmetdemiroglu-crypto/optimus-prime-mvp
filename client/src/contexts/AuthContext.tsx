@@ -46,13 +46,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const fetchSellerId = async (userId: string) => {
-        const { data } = await supabase
-            .from('sellers')
-            .select('id')
-            .eq('user_id', userId)
-            .single();
-        setSellerId(data?.id ?? null);
-        setLoading(false);
+        try {
+            const { data, error } = await supabase
+                .from('sellers')
+                .select('id')
+                .eq('user_id', userId)
+                .single();
+            if (error) {
+                console.error('Failed to fetch seller ID:', error);
+            }
+            setSellerId(data?.id ?? null);
+        } catch (err) {
+            console.error('Unexpected error fetching seller ID:', err);
+            setSellerId(null);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const signIn = async (email: string, password: string) => {
