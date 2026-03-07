@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from typing import Dict, Any
 from app.services.semantic_engine import process_and_cluster_search_terms, generate_campaign_expansions
 from app.services.ai_client import generate_listing_suggestion
+from app.api.deps import verify_token
 from supabase import create_client, Client
 import os
 import uuid
@@ -24,7 +25,7 @@ except Exception as e:
     print(f"Warning: Backend failed to authenticate with Supabase: {e}")
 
 @router.post("/cluster/{campaign_id}")
-async def run_semantic_clustering(campaign_id: str):
+async def run_semantic_clustering(campaign_id: str, user_id: str = Depends(verify_token)):
     """
     Run pgvector embeddings and DBSCAN clustering on search terms for a campaign.
     """
@@ -46,7 +47,7 @@ async def run_semantic_clustering(campaign_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/listing/{cluster_id}")
-async def generate_optimized_listing(cluster_id: str, payload: dict = Body(...)):
+async def generate_optimized_listing(cluster_id: str, payload: dict = Body(...), user_id: str = Depends(verify_token)):
     """
     Generate a Cosmo/Rufus optimized listing from a given semantic cluster using OpenRouter LLM.
     """
@@ -110,7 +111,7 @@ async def generate_optimized_listing(cluster_id: str, payload: dict = Body(...))
     return saved.data[0]
 
 @router.post("/campaigns/{cluster_id}")
-async def generate_skag_proposals(cluster_id: str, payload: dict = Body(...)):
+async def generate_skag_proposals(cluster_id: str, payload: dict = Body(...), user_id: str = Depends(verify_token)):
     """
     Generate Exact and Broad match SKAGs for a semantic cluster.
     """

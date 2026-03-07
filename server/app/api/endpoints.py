@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from app.models.schemas import (
     DashboardResponse,
@@ -15,24 +15,25 @@ from app.services.ai_simulation import (
 )
 from app.services.ai_client import generate_chat_response
 from app.core.config import settings
+from app.api.deps import verify_token
 
 router = APIRouter(prefix=settings.API_V1_STR, tags=["grok-admaster"])
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard():
+async def get_dashboard(user_id: str = Depends(verify_token)):
     """Get dashboard metrics, sales data, and AI actions"""
     return generate_dashboard_data()
 
 
 @router.get("/campaigns", response_model=List[Campaign])
-async def get_campaigns():
+async def get_campaigns(user_id: str = Depends(verify_token)):
     """Get all campaigns"""
     return generate_campaigns()
 
 
 @router.get("/campaigns/{campaign_id}", response_model=Campaign)
-async def get_campaign(campaign_id: str):
+async def get_campaign(campaign_id: str, user_id: str = Depends(verify_token)):
     """Get specific campaign by ID"""
     campaigns = generate_campaigns()
     for campaign in campaigns:
@@ -42,7 +43,7 @@ async def get_campaign(campaign_id: str):
 
 
 @router.post("/campaigns/{campaign_id}/strategy", response_model=Campaign)
-async def update_strategy(campaign_id: str, strategy_update: StrategyUpdate):
+async def update_strategy(campaign_id: str, strategy_update: StrategyUpdate, user_id: str = Depends(verify_token)):
     """Update campaign strategy"""
     try:
         return update_campaign_strategy(campaign_id, strategy_update.strategy)
@@ -53,12 +54,12 @@ async def update_strategy(campaign_id: str, strategy_update: StrategyUpdate):
 from fastapi import UploadFile, File
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(message: ChatMessage):
+async def chat(message: ChatMessage, user_id: str = Depends(verify_token)):
     """Send message to Grok AI and get response"""
     return await generate_chat_response(message.message, history=message.history)
 
 @router.post("/reports/upload", response_model=ReportAnalysisResponse)
-async def upload_report(file: UploadFile = File(...)):
+async def upload_report(file: UploadFile = File(...), user_id: str = Depends(verify_token)):
     """Upload and analyze a CSV report"""
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
@@ -75,5 +76,5 @@ async def upload_report(file: UploadFile = File(...)):
 
 @router.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint — unauthenticated so load balancers can ping it"""
     return {"status": "healthy", "service": "grok-admaster"}

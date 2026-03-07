@@ -1,7 +1,22 @@
 import { supabase } from '../lib/supabase';
-import type { DashboardData, DashboardMetrics, SalesDataPoint, AIAction, Campaign, StrategyType, ChatResponse, Keyword, Alert, AlertRule, SearchTerm, SemanticCluster, ListingSuggestion, CampaignExpansion, ComplianceIssue,
+import type {
+    DashboardData, DashboardMetrics, SalesDataPoint, AIAction, Campaign, StrategyType, ChatResponse, Keyword, Alert, AlertRule, SearchTerm, SemanticCluster, ListingSuggestion, CampaignExpansion, ComplianceIssue,
     GuardrailResult, BatchHistory, ProjectedSpend, ModelLeaderboardEntry, NegativeKeywordSuggestion, DaypartingHour, DaypartingSchedule, SpendPacing, RolloutStatus, BidExperiment, ExperimentAnalysis, CompetitorBidEstimate, AuctionSimulation, PortfolioBudgetAllocation, BudgetSimulation, KeywordHealth, HealthStatus
 } from '../types';
+
+/**
+ * Get the current Supabase session token and return headers
+ * suitable for authenticated fetch() calls to the Python FastAPI backend.
+ */
+async function getAuthHeaders(contentType?: string): Promise<Record<string, string>> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (contentType) headers['Content-Type'] = contentType;
+    if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    return headers;
+}
 
 export const dashboardApi = {
     getDashboard: async (): Promise<DashboardData> => {
@@ -107,9 +122,10 @@ export const campaignApi = {
 
 export const chatApi = {
     sendMessage: async (message: string, history: { role: string, content: string }[] = []): Promise<ChatResponse> => {
+        const headers = await getAuthHeaders('application/json');
         const response = await fetch(`http://localhost:8001/api/v1/chat`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ message, history })
         });
         if (!response.ok) {
@@ -1172,9 +1188,10 @@ export const semanticApi = {
     },
 
     runClustering: async (campaignId: string): Promise<number> => {
+        const headers = await getAuthHeaders('application/json');
         const response = await fetch(`http://localhost:8001/api/v1/semantic/cluster/${campaignId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers
         });
         if (!response.ok) {
             const err = await response.text();
@@ -1200,9 +1217,10 @@ export const semanticApi = {
     },
 
     generateListingSuggestion: async (clusterId: string, campaignId: string): Promise<ListingSuggestion> => {
+        const headers = await getAuthHeaders('application/json');
         const response = await fetch(`http://localhost:8001/api/v1/semantic/listing/${clusterId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ campaign_id: campaignId })
         });
         if (!response.ok) {
@@ -1266,9 +1284,10 @@ export const semanticApi = {
     },
 
     generateCampaignExpansions: async (clusterId: string, campaignId: string): Promise<number> => {
+        const headers = await getAuthHeaders('application/json');
         const response = await fetch(`http://localhost:8001/api/v1/semantic/campaigns/${clusterId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ campaign_id: campaignId })
         });
         if (!response.ok) {
@@ -1297,8 +1316,10 @@ export const reportsApi = {
         const formData = new FormData();
         formData.append('file', file);
 
+        const authHeaders = await getAuthHeaders();
         const response = await fetch(`http://localhost:8001/api/v1/reports/upload`, {
             method: 'POST',
+            headers: authHeaders,
             body: formData,
         });
 

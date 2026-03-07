@@ -121,7 +121,7 @@ Return ONLY a valid JSON object. No markdown, no explanation, no extra text:
         }
 
 async def generate_chat_response(message: str, history: list = None) -> dict:
-    """Generate response for the Optimus AI Assistant."""
+    """Generate response for the Optimus AI Assistant using RAG (Retrieval-Augmented Generation)."""
     from datetime import datetime
     
     system_prompt = """You are Optimus — an elite Amazon Advertising AI built into NexOptimus Prime, an advanced PPC management platform. You are the seller's most trusted strategic advisor for all things Amazon advertising.
@@ -176,30 +176,72 @@ You are an expert in all of the following, and you should draw on this expertise
 - YES: "Run a Search Term Report filtered to the last 30 days. Sort by spend descending. Any keyword above $5 spend with 0 orders is a candidate for bid reduction or negation."
 """
     
+    # ——— RAG: Retrieve relevant context via vector similarity search ———
     live_data_context = ""
     try:
-        camp_res = supabase.table('campaigns').select('name, status, strategy, daily_budget, spend, sales, acos, impressions, clicks, orders').execute()
+        # 1. Always grab high-level account summary (lightweight — just aggregates)
+        camp_res = supabase.table('campaigns').select(
+            'name, status, strategy, daily_budget, spend, sales, acos, impressions, clicks, orders'
+        ).execute()
         campaigns = camp_res.data if hasattr(camp_res, 'data') and camp_res.data else []
-        
+
         if campaigns:
             total_spend = sum(float(c.get('spend') or 0) for c in campaigns)
             total_sales = sum(float(c.get('sales') or 0) for c in campaigns)
             overall_acos = (total_spend / total_sales * 100) if total_sales > 0 else 0
             
-            top_campaigns = sorted(campaigns, key=lambda x: float(x.get('spend') or 0), reverse=True)[:5]
-            camp_strs = [f"- {c.get('name')} ({c.get('status')}): Spend ${c.get('spend', 0)}, Sales ${c.get('sales', 0)}, ACoS {c.get('acos', 0)}% (Strategy: {c.get('strategy')})" for c in top_campaigns]
-            
             live_data_context = f"""
-## Live Account Performance (Provided for Context)
+## Account Summary
 - **Total Spend**: ${total_spend:.2f}
 - **Total Sales**: ${total_sales:.2f}
 - **Overall ACoS**: {overall_acos:.2f}%
-- **Campaigns**: {len([c for c in campaigns if c.get('status') == 'active'])} active / {len(campaigns)} total
+- **Active Campaigns**: {len([c for c in campaigns if c.get('status') == 'active'])} / {len(campaigns)} total
+"""
 
+        # 2. RAG: Embed the user query and retrieve the most relevant search terms
+        try:
+            query_embedding = await generate_embeddings([message])
+            if query_embedding and len(query_embedding) > 0:
+                rag_res = supabase.rpc('match_search_terms', {
+                    'query_embedding': query_embedding[0],
+                    'match_threshold': 0.3,
+                    'match_count': 5
+                }).execute()
+
+                relevant_terms = rag_res.data or []
+                if relevant_terms:
+                    term_lines = []
+                    for t in relevant_terms:
+                        term_lines.append(
+                            f"- \"{t.get('query_text', '')}\" — "
+                            f"Impressions: {t.get('impressions', 0)}, "
+                            f"Clicks: {t.get('clicks', 0)}, "
+                            f"Orders: {t.get('orders', 0)}, "
+                            f"Spend: ${float(t.get('spend', 0)):.2f}, "
+                            f"Sales: ${float(t.get('sales', 0)):.2f}"
+                        )
+                    live_data_context += f"""
+## Relevant Search Terms (via RAG)
+{chr(10).join(term_lines)}
+"""
+        except Exception as rag_err:
+            # RAG is best-effort; fall back gracefully
+            print(f"RAG retrieval skipped: {rag_err}")
+
+        # 3. Fallback: If RAG returned nothing, include top 5 campaigns by spend
+        if "Relevant Search Terms" not in live_data_context and campaigns:
+            top_campaigns = sorted(campaigns, key=lambda x: float(x.get('spend') or 0), reverse=True)[:5]
+            camp_strs = [
+                f"- {c.get('name')} ({c.get('status')}): Spend ${c.get('spend', 0)}, "
+                f"Sales ${c.get('sales', 0)}, ACoS {c.get('acos', 0)}% (Strategy: {c.get('strategy')})"
+                for c in top_campaigns
+            ]
+            live_data_context += f"""
 ### Top Spending Campaigns
-""" + "\n".join(camp_strs)
+{chr(10).join(camp_strs)}
+"""
     except Exception as e:
-        print(f"Failed to embed live data: {e}")
+        print(f"Failed to build context: {e}")
 
     final_system_prompt = system_prompt + "\n\n" + live_data_context
     messages = [{"role": "system", "content": final_system_prompt}]
@@ -236,6 +278,8 @@ You are an expert in all of the following, and you should draw on this expertise
             "timestamp": datetime.utcnow().isoformat(),
             "suggestions": ["Try again", "Check API connection"]
         }
+
+
 
 async def analyze_csv_report(csv_content: str) -> dict:
     """Analyze a raw CSV report using the LLM and return structured insights."""

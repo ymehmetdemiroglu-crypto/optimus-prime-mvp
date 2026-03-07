@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
+    SUPABASE_JWT_SECRET: str = ""  # JWT signing secret from Supabase Dashboard > Settings > API
 
     model_config = SettingsConfigDict(
         env_file=".env",
