@@ -8,6 +8,7 @@ import { exportToCsv } from '../utils/export';
 export default function Campaigns() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
     const [keywords, setKeywords] = useState<Record<string, Keyword[]>>({});
     const [loadingKeywords, setLoadingKeywords] = useState<string | null>(null);
@@ -16,7 +17,7 @@ export default function Campaigns() {
 
     const loadCampaigns = async () => {
         try { setCampaigns(await campaignApi.getCampaigns()); }
-        catch (error) { console.error('Failed to load campaigns:', error); }
+        catch (error) { console.error('Failed to load campaigns:', error); setError('Failed to load campaigns. Please refresh.'); }
         finally { setLoading(false); }
     };
 
@@ -24,7 +25,7 @@ export default function Campaigns() {
 
     const handleStrategyChange = async (campaignId: string, strategy: StrategyType) => {
         try { const updated = await campaignApi.updateStrategy(campaignId, strategy); setCampaigns(campaigns.map(c => c.id === campaignId ? updated : c)); }
-        catch (error) { console.error('Failed to update strategy:', error); }
+        catch (error) { console.error('Failed to update strategy:', error); setError('Failed to update strategy. Please try again.'); }
     };
 
     const handleToggleKeywords = async (campaignId: string) => {
@@ -56,6 +57,14 @@ export default function Campaigns() {
 
     return (
         <div className="min-h-screen p-6 lg:p-8 space-y-5">
+            {/* Error Banner */}
+            {error && (
+                <div role="alert" className="bg-prime-red/10 border border-prime-red/30 p-4 chamfer flex items-center justify-between">
+                    <span className="text-prime-red text-sm">{error}</span>
+                    <button onClick={() => setError(null)} aria-label="Dismiss error" className="text-prime-gunmetal hover:text-prime-silver ml-4 text-lg leading-none">✕</button>
+                </div>
+            )}
+
             <div className="flex items-end justify-between">
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-wider">

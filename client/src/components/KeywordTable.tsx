@@ -83,33 +83,47 @@ export default function KeywordTable({ keywords, onKeywordUpdated }: KeywordTabl
 
             {/* Table */}
             <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" aria-label="Keywords table">
                     <thead>
                         <tr className="border-b border-gray-800 text-gray-400">
-                            <th className="text-left py-3 px-2">Status</th>
-                            <th className="text-left py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('keyword_text')}>
+                            <th className="text-left py-3 px-2" scope="col">Status</th>
+                            <th className="text-left py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'keyword_text' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('keyword_text')}>
                                 Keyword<SortIcon field="keyword_text" />
                             </th>
-                            <th className="text-left py-3 px-2">Match</th>
-                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('bid')}>
+                            <th className="text-left py-3 px-2" scope="col">Match</th>
+                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'bid' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('bid')}>
                                 Bid<SortIcon field="bid" />
                             </th>
-                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('impressions')}>
+                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'impressions' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('impressions')}>
                                 Impr.<SortIcon field="impressions" />
                             </th>
-                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('clicks')}>
+                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'clicks' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('clicks')}>
                                 Clicks<SortIcon field="clicks" />
                             </th>
-                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('spend')}>
+                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'spend' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('spend')}>
                                 Spend<SortIcon field="spend" />
                             </th>
-                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('sales')}>
+                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'sales' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('sales')}>
                                 Sales<SortIcon field="sales" />
                             </th>
-                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" onClick={() => handleSort('acos')}>
+                            <th className="text-right py-3 px-2 cursor-pointer hover:text-gray-200" scope="col"
+                                aria-sort={sortField === 'acos' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                                onClick={() => handleSort('acos')}>
                                 ACoS<SortIcon field="acos" />
                             </th>
-                            <th className="text-right py-3 px-2">CTR</th>
+                            <th className="text-right py-3 px-2" scope="col">CTR</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -127,6 +141,7 @@ export default function KeywordTable({ keywords, onKeywordUpdated }: KeywordTabl
                                             'bg-gray-600'
                                         }`}
                                         title={`${kw.status} — click to toggle`}
+                                        aria-label={`Toggle keyword status (currently ${kw.status})`}
                                     />
                                 </td>
                                 <td className="py-2 px-2 text-gray-100 font-medium">
@@ -161,8 +176,12 @@ export default function KeywordTable({ keywords, onKeywordUpdated }: KeywordTabl
                                         </div>
                                     ) : (
                                         <span
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`Edit bid: $${kw.bid.toFixed(2)}`}
                                             className="text-cyber-cyan cursor-pointer hover:underline"
                                             onClick={() => { setEditingBid(kw.id); setBidValue(kw.bid.toFixed(2)); }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setEditingBid(kw.id); setBidValue(kw.bid.toFixed(2)); } }}
                                         >
                                             ${kw.bid.toFixed(2)}
                                         </span>

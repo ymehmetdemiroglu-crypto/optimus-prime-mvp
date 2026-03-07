@@ -10,6 +10,7 @@ export default function Dashboard() {
     const [autoLogs, setAutoLogs] = useState<AutonomousLog[]>([]);
     const [pacing, setPacing] = useState<SpendPacing[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const loadDashboard = useCallback(async () => {
         try {
@@ -23,6 +24,7 @@ export default function Dashboard() {
             setPacing(pacingData);
         } catch (error) {
             console.error('Failed to load dashboard:', error);
+            setError('Failed to load dashboard data. Please refresh.');
         } finally {
             setLoading(false);
         }
@@ -47,6 +49,14 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen p-6 lg:p-8 space-y-5">
+            {/* Error Banner */}
+            {error && (
+                <div role="alert" className="bg-prime-red/10 border border-prime-red/30 p-4 chamfer flex items-center justify-between">
+                    <span className="text-prime-red text-sm">{error}</span>
+                    <button onClick={() => setError(null)} aria-label="Dismiss error" className="text-prime-gunmetal hover:text-prime-silver ml-4 text-lg leading-none">✕</button>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-end justify-between pb-2">
                 <div>

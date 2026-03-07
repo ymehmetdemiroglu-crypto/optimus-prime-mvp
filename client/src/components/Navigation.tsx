@@ -21,7 +21,7 @@ export default function Navigation() {
     ];
 
     return (
-        <nav className="bg-prime-dark/90 backdrop-blur-xl border-b border-prime-gunmetal/30 sticky top-0 z-50">
+        <nav aria-label="Main navigation" className="bg-prime-dark/90 backdrop-blur-xl border-b border-prime-gunmetal/30 sticky top-0 z-50">
             <div className="max-w-[1600px] mx-auto px-6">
                 <div className="flex items-center justify-between h-12">
                     {/* Logo */}
@@ -45,6 +45,7 @@ export default function Navigation() {
                                 <Link
                                     key={item.path}
                                     to={item.path}
+                                    aria-current={isActive ? 'page' : undefined}
                                     className={`relative px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 ${isActive
                                         ? 'text-prime-energon'
                                         : 'text-prime-gunmetal hover:text-prime-silver'
@@ -72,6 +73,7 @@ export default function Navigation() {
                                 </span>
                                 <button
                                     onClick={signOut}
+                                    aria-label="Sign out"
                                     className="px-2.5 py-1 text-[10px] font-bold text-prime-gunmetal border border-prime-gunmetal/30 hover:text-prime-silver hover:border-prime-gunmetal transition-all uppercase tracking-widest chamfer-sm"
                                 >
                                     Logout
