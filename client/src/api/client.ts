@@ -6,6 +6,19 @@ import type {
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8001';
 
+// ── Seller ID cache (avoids redundant DB round-trips on every API call) ─────
+let _sellerIdCache: string | null = null;
+supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') _sellerIdCache = null;
+});
+async function getMySellerId(): Promise<string> {
+    if (_sellerIdCache) return _sellerIdCache;
+    const { data, error } = await supabase.rpc('get_my_seller_id');
+    if (error || !data) throw new Error('No seller found');
+    _sellerIdCache = data as string;
+    return _sellerIdCache;
+}
+
 /**
  * Shared helper: apply a list of bid recommendations to the keywords table.
  * Returns the count of successfully applied updates.
@@ -182,11 +195,10 @@ export const autonomousApi = {
         return (data || []) as any;
     },
     runOperator: async (): Promise<number> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
 
         const { data, error } = await supabase.rpc('run_autonomous_operator', {
-            p_seller_id: sellerRes.data
+            p_seller_id: sellerId
         });
 
         if (error) throw error;
@@ -368,11 +380,10 @@ export const forecastApi = {
     },
 
     computeForecasts: async (): Promise<void> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
 
         const { error } = await supabase.rpc('compute_ewma_forecast', {
-            p_seller_id: sellerRes.data,
+            p_seller_id: sellerId,
             p_horizon_days: 7
         });
 
@@ -484,11 +495,11 @@ export const guardrailApi = {
     },
 
     getBatchHistory: async (): Promise<BatchHistory[]> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) return [];
+        let sellerId: string;
+        try { sellerId = await getMySellerId(); } catch { return []; }
 
         const { data, error } = await supabase.rpc('get_batch_history', {
-            p_seller_id: sellerRes.data,
+            p_seller_id: sellerId,
             p_limit: 20,
         });
         if (error) throw error;
@@ -803,11 +814,10 @@ export const competitorApi = {
 
 export const portfolioApi = {
     optimizeBudget: async (totalBudget: number): Promise<PortfolioBudgetAllocation[]> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
 
         const { data, error } = await supabase.rpc('optimize_portfolio_budget', {
-            p_seller_id: sellerRes.data,
+            p_seller_id: sellerId,
             p_total_budget: totalBudget,
         });
         if (error) throw error;
@@ -824,11 +834,10 @@ export const portfolioApi = {
     },
 
     simulateBudgetChange: async (additionalBudget: number): Promise<BudgetSimulation> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
 
         const { data, error } = await supabase.rpc('simulate_budget_change', {
-            p_seller_id: sellerRes.data,
+            p_seller_id: sellerId,
             p_additional_budget: additionalBudget,
         });
         if (error) throw error;
@@ -893,10 +902,9 @@ export const alertApi = {
     },
 
     runCheck: async (): Promise<number> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
         const { data, error } = await supabase.rpc('check_alert_rules', {
-            p_seller_id: sellerRes.data,
+            p_seller_id: sellerId,
         });
         if (error) throw error;
         return data as number;
@@ -942,13 +950,12 @@ export const competitiveApi = {
     },
 
     addCompetitor: async (asin: string, brandName?: string, productTitle?: string): Promise<void> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
 
         const { error } = await supabase
             .from('competitors')
             .insert({
-                seller_id: sellerRes.data,
+                seller_id: sellerId,
                 asin,
                 brand_name: brandName,
                 product_title: productTitle
@@ -977,13 +984,13 @@ export interface SyncLog {
 
 export const integrationApi = {
     getCredentials: async (): Promise<SPApiCredentials | null> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) return null;
+        let sellerId: string;
+        try { sellerId = await getMySellerId(); } catch { return null; }
 
         const { data, error } = await supabase
             .from('sp_api_credentials')
             .select('*')
-            .eq('seller_id', sellerRes.data)
+            .eq('seller_id', sellerId)
             .maybeSingle();
 
         if (error && error.code !== 'PGRST116') throw error;
@@ -991,13 +998,12 @@ export const integrationApi = {
     },
 
     saveCredentials: async (credentials: { region: string; client_id: string; client_secret: string; refresh_token: string }): Promise<void> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
+        const sellerId = await getMySellerId();
 
         const { error } = await supabase
             .from('sp_api_credentials')
             .upsert({
-                seller_id: sellerRes.data,
+                seller_id: sellerId,
                 region: credentials.region,
                 client_id: credentials.client_id,
                 client_secret: credentials.client_secret,
@@ -1117,9 +1123,7 @@ export const semanticApi = {
     },
 
     importSearchTerms: async (campaignId: string): Promise<number> => {
-        const sellerRes = await supabase.rpc('get_my_seller_id');
-        if (sellerRes.error || !sellerRes.data) throw new Error('No seller found');
-        const sellerId = sellerRes.data;
+        const sellerId = await getMySellerId();
 
         const sampleQueries = [
             'wireless bluetooth earbuds', 'noise cancelling headphones', 'earbuds with microphone',
