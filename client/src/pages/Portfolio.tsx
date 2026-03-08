@@ -70,8 +70,8 @@ export default function Portfolio() {
         try {
             const result = await portfolioApi.optimizeBudget(totalBudget);
             setAllocations(result);
-        } catch (e: any) {
-            setOptimizeError(e.message || 'Optimization failed');
+        } catch (e: unknown) {
+            setOptimizeError(e instanceof Error ? e.message : 'Optimization failed');
             setAllocations([]);
         } finally {
             setOptimizing(false);
@@ -93,8 +93,8 @@ export default function Portfolio() {
             // Refresh campaigns
             const refreshed = await campaignApi.getCampaigns();
             setCampaigns(refreshed);
-        } catch (e: any) {
-            setApplyMessage(`Failed to apply: ${e.message || 'Unknown error'}`);
+        } catch (e: unknown) {
+            setApplyMessage(`Failed to apply: ${e instanceof Error ? e.message : 'Unknown error'}`);
         } finally {
             setApplying(false);
         }
@@ -107,8 +107,8 @@ export default function Portfolio() {
         try {
             const result = await portfolioApi.simulateBudgetChange(additionalBudget);
             setSimulation(result);
-        } catch (e: any) {
-            setSimError(e.message || 'Simulation failed');
+        } catch (e: unknown) {
+            setSimError(e instanceof Error ? e.message : 'Simulation failed');
             setSimulation(null);
         } finally {
             setSimulating(false);

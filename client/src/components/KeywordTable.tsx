@@ -5,7 +5,6 @@ import type { Keyword } from '../types';
 interface KeywordTableProps {
     keywords: Keyword[];
     onKeywordUpdated: (updated: Keyword) => void;
-    onKeywordDeleted: (id: string) => void;
 }
 
 type SortField = 'keyword_text' | 'bid' | 'impressions' | 'clicks' | 'spend' | 'sales' | 'acos';

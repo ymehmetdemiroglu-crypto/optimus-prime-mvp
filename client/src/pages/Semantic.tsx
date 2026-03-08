@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { campaignApi, semanticApi } from '../api/client';
 import type { Campaign, SearchTerm, SemanticCluster, ListingSuggestion, CampaignExpansion } from '../types';
 
@@ -18,7 +18,10 @@ export default function Semantic() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    useEffect(() => { campaignApi.getCampaigns().then(setCampaigns).catch(console.error); }, []);
+    useEffect(() => {
+        campaignApi.getCampaigns().then(setCampaigns)
+            .catch((e) => { console.error(e); setMessage('Error: Failed to load campaigns'); });
+    }, []);
 
     useEffect(() => {
         if (!selectedCampaign) return;
@@ -33,7 +36,10 @@ export default function Semantic() {
             else if (activeTab === 'clusters') setClusters(await semanticApi.getClusters(selectedCampaign));
             else if (activeTab === 'listings') setListings(await semanticApi.getListingSuggestions(selectedCampaign));
             else setExpansions(await semanticApi.getCampaignExpansions(selectedCampaign));
-        } catch (e) { console.error(e); }
+        } catch (e: unknown) {
+            console.error(e);
+            setMessage(`Error: ${e instanceof Error ? e.message : 'Failed to load data'}`);
+        }
         finally { setLoading(false); }
     };
 
@@ -43,7 +49,7 @@ export default function Semantic() {
             const count = await semanticApi.importSearchTerms(selectedCampaign);
             setMessage(`Imported ${count} search terms successfully`);
             setSearchTerms(await semanticApi.getSearchTerms(selectedCampaign));
-        } catch (e: any) { setMessage(`Error: ${e.message}`); }
+        } catch (e: unknown) { setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`); }
         finally { setLoading(false); }
     };
 
@@ -53,7 +59,7 @@ export default function Semantic() {
             const count = await semanticApi.runClustering(selectedCampaign);
             setMessage(`Created ${count} semantic clusters`);
             setClusters(await semanticApi.getClusters(selectedCampaign));
-        } catch (e: any) { setMessage(`Error: ${e.message}`); }
+        } catch (e: unknown) { setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`); }
         finally { setLoading(false); }
     };
 
@@ -63,7 +69,7 @@ export default function Semantic() {
             await semanticApi.generateListingSuggestion(clusterId, selectedCampaign);
             setMessage('Listing suggestion generated');
             setListings(await semanticApi.getListingSuggestions(selectedCampaign));
-        } catch (e: any) { setMessage(`Error: ${e.message}`); }
+        } catch (e: unknown) { setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`); }
         finally { setLoading(false); }
     };
 
@@ -71,7 +77,7 @@ export default function Semantic() {
         try {
             const updated = await semanticApi.runComplianceCheck(suggestionId);
             setListings(prev => prev.map(l => l.id === updated.id ? updated : l));
-        } catch (e: any) { setMessage(`Error: ${e.message}`); }
+        } catch (e: unknown) { setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`); }
     };
 
     const handleGenerateExpansions = async (clusterId: string) => {
@@ -80,7 +86,7 @@ export default function Semantic() {
             await semanticApi.generateCampaignExpansions(clusterId, selectedCampaign);
             setMessage('Campaign expansion proposals created');
             setExpansions(await semanticApi.getCampaignExpansions(selectedCampaign));
-        } catch (e: any) { setMessage(`Error: ${e.message}`); }
+        } catch (e: unknown) { setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`); }
         finally { setLoading(false); }
     };
 
@@ -157,7 +163,10 @@ export default function Semantic() {
 // ── Tab 1: Search Terms ──
 function SearchTermsTab({ terms, onImport }: { terms: SearchTerm[]; onImport: () => void }) {
     const [sortBy, setSortBy] = useState<'impressions' | 'clicks' | 'sales' | 'acos'>('impressions');
-    const sorted = [...terms].sort((a, b) => sortBy === 'acos' ? a[sortBy] - b[sortBy] : b[sortBy] - a[sortBy]);
+    const sorted = useMemo(
+        () => [...terms].sort((a, b) => sortBy === 'acos' ? a[sortBy] - b[sortBy] : b[sortBy] - a[sortBy]),
+        [terms, sortBy]
+    );
 
     return (
         <div className="space-y-4">
@@ -333,12 +342,12 @@ function ListingsTab({ listings, onComplianceCheck }: { listings: ListingSuggest
                     {listings.map(listing => (
                         <div key={listing.id} className="bg-prime-dark/80 border border-prime-gunmetal/30 chamfer overflow-hidden">
                             {/* Header */}
-                            <div className="p-5 cursor-pointer" onClick={() => setExpanded(expanded === listing.id ? null : listing.id)}>
+                            <button className="w-full text-left p-5 cursor-pointer" aria-expanded={expanded === listing.id} onClick={() => setExpanded(expanded === listing.id ? null : listing.id)}>
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
                                             <span className="text-[10px] text-prime-gunmetal uppercase tracking-widest font-bold">
-                                                {(listing.cluster as any)?.cluster_label || 'General'}
+                                                {listing.cluster?.cluster_label ?? 'General'}
                                             </span>
                                             <ComplianceBadge status={listing.compliance_status} />
                                         </div>
@@ -354,7 +363,7 @@ function ListingsTab({ listings, onComplianceCheck }: { listings: ListingSuggest
                                         Run QA
                                     </button>
                                 </div>
-                            </div>
+                            </button>
 
                             {/* Expanded Details */}
                             {expanded === listing.id && (

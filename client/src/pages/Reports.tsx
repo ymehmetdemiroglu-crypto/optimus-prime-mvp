@@ -70,8 +70,8 @@ export default function Reports() {
         try {
             const result = await reportsApi.uploadReport(file);
             setAnalysis(result);
-        } catch (err: any) {
-            setError(err.message || 'An error occurred during analysis.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'An error occurred during analysis.');
         } finally {
             setIsUploading(false);
         }
@@ -193,8 +193,8 @@ export default function Reports() {
                                 Actionable Insights
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {analysis.insights.map((insight, idx) => (
-                                    <div key={idx} className="bg-prime-dark/60 border border-prime-gunmetal/30 p-5 chamfer group hover:border-prime-silver/50 transition-all duration-300 flex flex-col justify-between h-full">
+                                {analysis.insights.map((insight) => (
+                                    <div key={insight.title} className="bg-prime-dark/60 border border-prime-gunmetal/30 p-5 chamfer group hover:border-prime-silver/50 transition-all duration-300 flex flex-col justify-between h-full">
                                         <div>
                                             <h4 className="text-sm font-bold text-white mb-2 group-hover:text-prime-blue transition-colors">
                                                 {insight.title}

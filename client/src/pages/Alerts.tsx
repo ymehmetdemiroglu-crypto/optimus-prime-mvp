@@ -33,12 +33,15 @@ export default function Alerts() {
     const [loading, setLoading] = useState(true);
     const [checking, setChecking] = useState(false);
     const [newAlertsCount, setNewAlertsCount] = useState(0);
+    const [error, setError] = useState('');
 
     const loadAlerts = useCallback(async () => {
-        try { setAlerts(await alertApi.getAlerts()); } catch (err) { console.error(err); }
+        try { setAlerts(await alertApi.getAlerts()); }
+        catch (err) { console.error(err); setError('Failed to load alerts'); }
     }, []);
     const loadRules = useCallback(async () => {
-        try { setRules(await alertRuleApi.getRules()); } catch (err) { console.error(err); }
+        try { setRules(await alertRuleApi.getRules()); }
+        catch (err) { console.error(err); setError('Failed to load alert rules'); }
     }, []);
 
     useEffect(() => {
@@ -47,9 +50,9 @@ export default function Alerts() {
     }, [loadAlerts, loadRules]);
 
     const handleRunCheck = async () => {
-        setChecking(true);
+        setChecking(true); setError('');
         try { const count = await alertApi.runCheck(); setNewAlertsCount(count); await loadAlerts(); }
-        catch (err) { console.error(err); }
+        catch (err) { console.error(err); setError('Alert check failed'); }
         finally { setChecking(false); }
     };
     const handleMarkRead = async (id: string) => { await alertApi.markRead(id); setAlerts(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a)); };
@@ -92,6 +95,10 @@ export default function Alerts() {
                     )}
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-prime-red/5 border border-prime-red/20 px-4 py-3 text-prime-red text-sm chamfer-sm">{error}</div>
+            )}
 
             {newAlertsCount > 0 && (
                 <div className="bg-prime-energon/5 border border-prime-energon/20 px-4 py-3 text-prime-energon text-sm chamfer-sm">

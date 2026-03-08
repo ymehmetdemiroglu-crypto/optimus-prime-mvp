@@ -11,8 +11,12 @@ export default function Forecasts() {
     const [loading, setLoading] = useState(false);
     const [computing, setComputing] = useState(false);
     const [message, setMessage] = useState('');
+    const [loadError, setLoadError] = useState('');
 
-    useEffect(() => { campaignApi.getCampaigns().then(setCampaigns).catch(console.error); }, []);
+    useEffect(() => {
+        campaignApi.getCampaigns().then(setCampaigns)
+            .catch((e) => { console.error(e); setLoadError('Failed to load campaigns'); });
+    }, []);
 
     const handleComputeAll = async () => {
         setComputing(true); setMessage('');
@@ -52,8 +56,12 @@ export default function Forecasts() {
                 </button>
             </div>
 
+            {loadError && (
+                <div className="px-4 py-3 bg-prime-red/5 border border-prime-red/20 text-prime-red text-sm chamfer-sm">{loadError}</div>
+            )}
+
             {message && (
-                <div className="px-4 py-3 bg-emerald-500/5 border border-emerald-500/20 text-emerald-400 text-sm chamfer-sm">{message}</div>
+                <div className={`px-4 py-3 text-sm chamfer-sm ${message.startsWith('Failed') ? 'bg-prime-red/5 border border-prime-red/20 text-prime-red' : 'bg-emerald-500/5 border border-emerald-500/20 text-emerald-400'}`}>{message}</div>
             )}
 
             {/* Controls */}
