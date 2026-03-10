@@ -110,3 +110,33 @@ select option {
   background-color: #0e1419;
   color: #e2e8f0;
 }
+
+/* Slide-in animation for explainability panel */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.25s ease-out forwards;
+}
+
+/* Pulse glow for autonomous status */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(0, 251, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(0, 251, 255, 0.4);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}

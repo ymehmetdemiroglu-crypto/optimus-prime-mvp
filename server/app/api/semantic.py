@@ -18,8 +18,8 @@ supabase: Client = create_client(
 # This bypasses RLS since we are using the 'anon' key instead of 'service_role'
 try:
     supabase.auth.sign_in_with_password({
-        "email": "ymehmetdemiroglu@gmail.com",
-        "password": "password123"
+        "email": os.getenv("SERVICE_EMAIL", ""),
+        "password": os.getenv("SERVICE_PASSWORD", "")
     })
 except Exception as e:
     print(f"Warning: Backend failed to authenticate with Supabase: {e}")

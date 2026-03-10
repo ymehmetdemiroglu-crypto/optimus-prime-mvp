@@ -1,9 +1,28 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 export default function Navigation() {
     const location = useLocation();
     const { user, signOut } = useAuth();
+    const [pendingCount, setPendingCount] = useState(0);
+
+    // Fetch pending approval count
+    useEffect(() => {
+        const fetchCount = async () => {
+            try {
+                const { count } = await supabase
+                    .from('pending_approvals')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'pending');
+                setPendingCount(count || 0);
+            } catch { /* ignore */ }
+        };
+        fetchCount();
+        const interval = setInterval(fetchCount, 60000); // Refresh every minute
+        return () => clearInterval(interval);
+    }, []);
 
     const navItems = [
         { path: '/', label: 'War Room' },
@@ -16,6 +35,7 @@ export default function Navigation() {
         { path: '/semantic', label: 'Semantic' },
         { path: '/reports', label: 'Reports' },
         { path: '/alerts', label: 'Alerts' },
+        { path: '/approvals', label: 'Approvals', badge: pendingCount },
         { path: '/chat', label: 'Optimus AI' },
         { path: '/settings', label: 'Settings' },
     ];
@@ -51,6 +71,11 @@ export default function Navigation() {
                                         }`}
                                 >
                                     {item.label}
+                                    {item.badge > 0 && (
+                                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[9px] font-black bg-prime-red text-white rounded-full leading-none">
+                                            {item.badge > 99 ? '99+' : item.badge}
+                                        </span>
+                                    )}
                                     {isActive && (
                                         <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-prime-red" />
                                     )}

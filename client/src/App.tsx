@@ -14,6 +14,7 @@ import Competitive from './pages/Competitive';
 import Settings from './pages/Settings';
 import Semantic from './pages/Semantic';
 import Reports from './pages/Reports';
+import ApprovalQueue from './pages/ApprovalQueue';
 import Login from './pages/Login';
 import './index.css';
 
@@ -44,6 +45,7 @@ function App() {
                             <Route path="/competitive" element={<Competitive />} />
                             <Route path="/semantic" element={<Semantic />} />
                             <Route path="/reports" element={<Reports />} />
+                            <Route path="/approvals" element={<ApprovalQueue />} />
                             <Route path="/chat" element={<AiChat />} />
                             <Route path="/settings" element={<Settings />} />
                         </Route>

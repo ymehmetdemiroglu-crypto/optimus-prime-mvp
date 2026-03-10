@@ -2,10 +2,28 @@
 FastAPI security dependencies for Supabase JWT validation.
 Protects all backend endpoints from unauthorized access.
 """
+import os
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
+from supabase import create_client, Client
 from app.core.config import settings
+
+
+def get_supabase_client() -> Client:
+    """Get an authenticated Supabase client for backend use."""
+    sb = create_client(
+        os.getenv("SUPABASE_URL", settings.SUPABASE_URL),
+        os.getenv("SUPABASE_KEY", settings.SUPABASE_KEY),
+    )
+    try:
+        sb.auth.sign_in_with_password({
+            "email": os.getenv("SERVICE_EMAIL", ""),
+            "password": os.getenv("SERVICE_PASSWORD", ""),
+        })
+    except Exception:
+        pass
+    return sb
 
 # This scheme expects an "Authorization: Bearer <token>" header
 security = HTTPBearer()

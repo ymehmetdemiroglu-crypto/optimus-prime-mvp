@@ -25,8 +25,8 @@ def _get_supabase() -> Client:
         )
         try:
             _supabase.auth.sign_in_with_password({
-                "email": "ymehmetdemiroglu@gmail.com",
-                "password": "password123"
+                "email": os.getenv("SERVICE_EMAIL", ""),
+                "password": os.getenv("SERVICE_PASSWORD", "")
             })
         except Exception:
             pass

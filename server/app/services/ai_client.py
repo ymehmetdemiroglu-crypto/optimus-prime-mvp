@@ -13,8 +13,8 @@ supabase: Client = create_client(
 
 try:
     supabase.auth.sign_in_with_password({
-        "email": "ymehmetdemiroglu@gmail.com",
-        "password": "password123"
+        "email": os.getenv("SERVICE_EMAIL", ""),
+        "password": os.getenv("SERVICE_PASSWORD", "")
     })
 except Exception:
     pass
@@ -240,6 +240,55 @@ You are an expert in all of the following, and you should draw on this expertise
 ### Top Spending Campaigns
 {chr(10).join(camp_strs)}
 """
+
+        # 4. Autonomous Activity Context (recent actions + pending approvals)
+        try:
+            # Recent autonomous actions (last 10)
+            log_res = supabase.table('autonomous_logs').select(
+                'action_type, reason, previous_value, new_value, approval_tier, created_at'
+            ).order('created_at', desc=True).limit(10).execute()
+            auto_logs = log_res.data if hasattr(log_res, 'data') and log_res.data else []
+            if auto_logs:
+                log_lines = []
+                for log in auto_logs[:5]:  # Top 5 most recent
+                    log_lines.append(
+                        f"- [{log.get('created_at', '')[:16]}] {log.get('action_type')}: "
+                        f"{log.get('reason', 'N/A')} (Tier: {log.get('approval_tier', 'N/A')})"
+                    )
+                live_data_context += f"""
+## Recent Autonomous Actions
+{chr(10).join(log_lines)}
+"""
+
+            # Pending approvals count
+            pending_res = supabase.table('pending_approvals').select(
+                'id', count='exact'
+            ).eq('status', 'pending').execute()
+            pending_count = pending_res.count or 0
+            if pending_count > 0:
+                live_data_context += f"""
+## Pending Approvals
+- **{pending_count} items** are waiting for human review in the approval queue.
+"""
+
+            # Active experiments
+            exp_res = supabase.table('bid_experiments').select(
+                'name, status, model_a, model_b, started_at'
+            ).eq('status', 'running').limit(5).execute()
+            experiments = exp_res.data if hasattr(exp_res, 'data') and exp_res.data else []
+            if experiments:
+                exp_lines = [
+                    f"- \"{e.get('name')}\": {e.get('model_a')} vs {e.get('model_b')} (started {e.get('started_at', '')[:10]})"
+                    for e in experiments
+                ]
+                live_data_context += f"""
+## Active Experiments
+{chr(10).join(exp_lines)}
+"""
+
+        except Exception as ctx_err:
+            print(f"Autonomous context skipped: {ctx_err}")
+
     except Exception as e:
         print(f"Failed to build context: {e}")
 
