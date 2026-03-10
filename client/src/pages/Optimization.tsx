@@ -8,7 +8,6 @@ import {
     negativeKeywordApi,
     daypartingApi,
     rolloutApi,
-    competitorApi,
 } from '../api/client';
 import type {
     BidRecommendation,
@@ -66,16 +65,14 @@ function TabButton({
     return (
         <button
             onClick={onClick}
-            className={`px-5 py-3 text-left transition-all border chamfer-sm ${
-                active
-                    ? 'bg-prime-darker border-prime-energon/30 shadow-energon'
-                    : 'bg-prime-dark border-prime-gunmetal/20 hover:border-prime-gunmetal/40'
-            }`}
+            className={`px-5 py-3 text-left transition-all border chamfer-sm ${active
+                ? 'bg-prime-darker border-prime-energon/30 shadow-energon'
+                : 'bg-prime-dark border-prime-gunmetal/20 hover:border-prime-gunmetal/40'
+                }`}
         >
             <div
-                className={`font-bold text-xs uppercase tracking-widest ${
-                    active ? 'text-prime-energon' : 'text-prime-gunmetal'
-                }`}
+                className={`font-bold text-xs uppercase tracking-widest ${active ? 'text-prime-energon' : 'text-prime-gunmetal'
+                    }`}
             >
                 {title}
             </div>
@@ -92,8 +89,8 @@ function ConfidenceBar({ value }: { value: number }) {
         percent >= 70
             ? 'bg-emerald-400'
             : percent >= 40
-              ? 'bg-yellow-400'
-              : 'bg-prime-red';
+                ? 'bg-yellow-400'
+                : 'bg-prime-red';
     return (
         <div className="flex items-center gap-2 justify-end">
             <div className="w-16 bg-prime-darker h-1.5 overflow-hidden">
@@ -268,8 +265,8 @@ export default function Optimization() {
         activeTab === 'thompson'
             ? thompsonRecs
             : activeTab === 'q-learning'
-              ? qLearningRecs
-              : ensembleRecs;
+                ? qLearningRecs
+                : ensembleRecs;
 
     const changedRecs = currentRecs.filter(
         (r) => r.recommended_bid !== r.current_bid
@@ -279,8 +276,8 @@ export default function Optimization() {
         activeTab === 'thompson'
             ? 'thompson'
             : activeTab === 'q-learning'
-              ? 'q_learning'
-              : 'ensemble';
+                ? 'q_learning'
+                : 'ensemble';
 
     // ── Generate recommendations ──
     const handleGenerate = async () => {
@@ -573,11 +570,10 @@ export default function Optimization() {
                     {isModelTab && (
                         <button
                             onClick={handleToggleHistory}
-                            className={`px-4 py-2 border text-xs font-bold uppercase tracking-widest transition-all chamfer-sm ${
-                                showHistory
-                                    ? 'bg-prime-darker border-prime-energon/30 text-prime-energon'
-                                    : 'bg-prime-dark border-prime-gunmetal/30 text-prime-gunmetal hover:text-prime-silver hover:border-prime-gunmetal'
-                            }`}
+                            className={`px-4 py-2 border text-xs font-bold uppercase tracking-widest transition-all chamfer-sm ${showHistory
+                                ? 'bg-prime-darker border-prime-energon/30 text-prime-energon'
+                                : 'bg-prime-dark border-prime-gunmetal/30 text-prime-gunmetal hover:text-prime-silver hover:border-prime-gunmetal'
+                                }`}
                         >
                             History
                         </button>
@@ -679,11 +675,10 @@ export default function Optimization() {
             {/* ── Messages ── */}
             {message && (
                 <div
-                    className={`px-4 py-3 text-sm chamfer-sm ${
-                        messageType === 'success'
-                            ? 'bg-emerald-500/5 border border-emerald-500/20 text-emerald-400'
-                            : 'bg-red-500/5 border border-red-500/20 text-red-400'
-                    }`}
+                    className={`px-4 py-3 text-sm chamfer-sm ${messageType === 'success'
+                        ? 'bg-emerald-500/5 border border-emerald-500/20 text-emerald-400'
+                        : 'bg-red-500/5 border border-red-500/20 text-red-400'
+                        }`}
                 >
                     {message}
                 </div>
@@ -732,11 +727,10 @@ export default function Optimization() {
                                     Projected Daily Spend Change
                                 </span>
                                 <div
-                                    className={`font-bold text-lg ${
-                                        confirmModal.projectedSpendChange > 0
-                                            ? 'text-red-400'
-                                            : 'text-emerald-400'
-                                    }`}
+                                    className={`font-bold text-lg ${confirmModal.projectedSpendChange > 0
+                                        ? 'text-red-400'
+                                        : 'text-emerald-400'
+                                        }`}
                                 >
                                     {confirmModal.projectedSpendChange > 0 ? '+' : ''}
                                     {confirmModal.projectedSpendChange.toFixed(1)}%
@@ -931,11 +925,10 @@ export default function Optimization() {
                                             return (
                                                 <tr
                                                     key={rec.keyword_id}
-                                                    className={`border-b border-prime-gunmetal/10 transition-colors ${
-                                                        isApplied
-                                                            ? 'bg-emerald-500/5'
-                                                            : 'hover:bg-prime-darker/50'
-                                                    }`}
+                                                    className={`border-b border-prime-gunmetal/10 transition-colors ${isApplied
+                                                        ? 'bg-emerald-500/5'
+                                                        : 'hover:bg-prime-darker/50'
+                                                        }`}
                                                 >
                                                     <td className="py-3 px-2">
                                                         <div className="text-prime-silver font-semibold">
@@ -1237,8 +1230,8 @@ export default function Optimization() {
                                     const bgColor = isBoost
                                         ? `rgba(16, 185, 129, ${Math.min(intensity * 2, 0.6)})`
                                         : isReduce
-                                          ? `rgba(239, 68, 68, ${Math.min(intensity * 2, 0.6)})`
-                                          : 'rgba(100, 100, 100, 0.1)';
+                                            ? `rgba(239, 68, 68, ${Math.min(intensity * 2, 0.6)})`
+                                            : 'rgba(100, 100, 100, 0.1)';
 
                                     return (
                                         <button
@@ -1251,13 +1244,12 @@ export default function Optimization() {
                                                 {i.toString().padStart(2, '0')}:00
                                             </div>
                                             <div
-                                                className={`text-sm font-bold mt-1 ${
-                                                    isBoost
-                                                        ? 'text-emerald-400'
-                                                        : isReduce
-                                                          ? 'text-red-400'
-                                                          : 'text-prime-gunmetal'
-                                                }`}
+                                                className={`text-sm font-bold mt-1 ${isBoost
+                                                    ? 'text-emerald-400'
+                                                    : isReduce
+                                                        ? 'text-red-400'
+                                                        : 'text-prime-gunmetal'
+                                                    }`}
                                             >
                                                 x{multiplier.toFixed(2)}
                                             </div>
@@ -1316,13 +1308,12 @@ export default function Optimization() {
                                             Bid Multiplier
                                         </span>
                                         <div
-                                            className={`font-bold text-xl mt-1 ${
-                                                selectedHour.bid_multiplier > 1
-                                                    ? 'text-emerald-400'
-                                                    : selectedHour.bid_multiplier < 1
-                                                      ? 'text-red-400'
-                                                      : 'text-prime-silver'
-                                            }`}
+                                            className={`font-bold text-xl mt-1 ${selectedHour.bid_multiplier > 1
+                                                ? 'text-emerald-400'
+                                                : selectedHour.bid_multiplier < 1
+                                                    ? 'text-red-400'
+                                                    : 'text-prime-silver'
+                                                }`}
                                         >
                                             x{selectedHour.bid_multiplier.toFixed(3)}
                                         </div>
@@ -1447,29 +1438,24 @@ export default function Optimization() {
                                             rolloutStatus.current_stage === stage;
                                         const isComplete =
                                             (rolloutStatus.current_stage ?? 0) > stage;
-                                        const isPending =
-                                            (rolloutStatus.current_stage ?? 0) < stage;
-
                                         return (
                                             <div key={stage} className="flex-1">
                                                 <div
-                                                    className={`h-2 chamfer-sm transition-all ${
-                                                        isComplete
-                                                            ? 'bg-emerald-500'
-                                                            : isCurrent
-                                                              ? 'bg-prime-energon animate-pulse'
-                                                              : 'bg-prime-gunmetal/20'
-                                                    }`}
+                                                    className={`h-2 chamfer-sm transition-all ${isComplete
+                                                        ? 'bg-emerald-500'
+                                                        : isCurrent
+                                                            ? 'bg-prime-energon animate-pulse'
+                                                            : 'bg-prime-gunmetal/20'
+                                                        }`}
                                                 />
                                                 <div className="flex items-center justify-between mt-1">
                                                     <span
-                                                        className={`text-[10px] uppercase tracking-widest ${
-                                                            isCurrent
-                                                                ? 'text-prime-energon font-bold'
-                                                                : isComplete
-                                                                  ? 'text-emerald-400'
-                                                                  : 'text-prime-gunmetal/40'
-                                                        }`}
+                                                        className={`text-[10px] uppercase tracking-widest ${isCurrent
+                                                            ? 'text-prime-energon font-bold'
+                                                            : isComplete
+                                                                ? 'text-emerald-400'
+                                                                : 'text-prime-gunmetal/40'
+                                                            }`}
                                                     >
                                                         Stage {stage}
                                                     </span>
@@ -1525,18 +1511,16 @@ export default function Optimization() {
                                             return (
                                                 <div
                                                     key={stage.stage}
-                                                    className={`p-4 chamfer-sm border ${
-                                                        isCurrent
-                                                            ? 'border-prime-energon/30 bg-prime-energon/5'
-                                                            : 'border-prime-gunmetal/20 bg-prime-black/40'
-                                                    }`}
+                                                    className={`p-4 chamfer-sm border ${isCurrent
+                                                        ? 'border-prime-energon/30 bg-prime-energon/5'
+                                                        : 'border-prime-gunmetal/20 bg-prime-black/40'
+                                                        }`}
                                                 >
                                                     <div
-                                                        className={`text-[10px] uppercase tracking-widest mb-2 ${
-                                                            isCurrent
-                                                                ? 'text-prime-energon'
-                                                                : 'text-prime-gunmetal'
-                                                        }`}
+                                                        className={`text-[10px] uppercase tracking-widest mb-2 ${isCurrent
+                                                            ? 'text-prime-energon'
+                                                            : 'text-prime-gunmetal'
+                                                            }`}
                                                     >
                                                         Stage {stage.stage}
                                                     </div>

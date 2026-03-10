@@ -71,9 +71,9 @@ export default function Navigation() {
                                         }`}
                                 >
                                     {item.label}
-                                    {item.badge > 0 && (
+                                    {(item.badge ?? 0) > 0 && (
                                         <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[9px] font-black bg-prime-red text-white rounded-full leading-none">
-                                            {item.badge > 99 ? '99+' : item.badge}
+                                            {(item.badge ?? 0) > 99 ? '99+' : item.badge}
                                         </span>
                                     )}
                                     {isActive && (

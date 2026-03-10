@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase';
-import type {
+import { supabase as rawSupabase } from '../lib/supabase';
+const supabase = rawSupabase as any; import type {
     DashboardData, DashboardMetrics, SalesDataPoint, AIAction, Campaign, StrategyType, ChatResponse, Keyword, Alert, AlertRule, SearchTerm, SemanticCluster, ListingSuggestion, CampaignExpansion, ComplianceIssue,
     GuardrailResult, BatchHistory, ProjectedSpend, ModelLeaderboardEntry, NegativeKeywordSuggestion, DaypartingHour, DaypartingSchedule, SpendPacing, RolloutStatus, BidExperiment, ExperimentAnalysis, CompetitorBidEstimate, AuctionSimulation, PortfolioBudgetAllocation, BudgetSimulation, KeywordHealth, HealthStatus
 } from '../types';
@@ -28,11 +28,11 @@ export const dashboardApi = {
 
         const allCampaigns = campaigns || [];
 
-        const totalSales = allCampaigns.reduce((sum, c) => sum + Number(c.sales), 0);
-        const totalSpend = allCampaigns.reduce((sum, c) => sum + Number(c.spend), 0);
-        const totalImpressions = allCampaigns.reduce((sum, c) => sum + c.impressions, 0);
-        const totalClicks = allCampaigns.reduce((sum, c) => sum + c.clicks, 0);
-        const totalOrders = allCampaigns.reduce((sum, c) => sum + c.orders, 0);
+        const totalSales = allCampaigns.reduce((sum: number, c: any) => sum + Number(c.sales), 0);
+        const totalSpend = allCampaigns.reduce((sum: number, c: any) => sum + Number(c.spend), 0);
+        const totalImpressions = allCampaigns.reduce((sum: number, c: any) => sum + c.impressions, 0);
+        const totalClicks = allCampaigns.reduce((sum: number, c: any) => sum + c.clicks, 0);
+        const totalOrders = allCampaigns.reduce((sum: number, c: any) => sum + c.orders, 0);
 
         const metrics: DashboardMetrics = {
             acos: totalSales > 0 ? Number(((totalSpend / totalSales) * 100).toFixed(2)) : 0,
@@ -73,7 +73,7 @@ export const dashboardApi = {
             .order('created_at', { ascending: false })
             .limit(10);
 
-        const ai_actions: AIAction[] = (actionsData || []).map(a => ({
+        const ai_actions: AIAction[] = (actionsData || []).map((a: any) => ({
             id: a.id,
             timestamp: a.created_at || new Date().toISOString(),
             action: a.action,
@@ -405,7 +405,7 @@ export const ensembleApi = {
         });
 
         if (error) throw error;
-        const recs = (data || []).map((r: any) => ({
+        const recs: EnsembleRecommendation[] = (data || []).map((r: any) => ({
             keyword_id: r.keyword_id,
             keyword_text: r.keyword_text,
             current_bid: Number(r.current_bid),
@@ -425,7 +425,7 @@ export const ensembleApi = {
         ]);
 
         const competitorMap = new Map(competitors.map(c => [c.keyword_id, c]));
-        return enriched.map(rec => {
+        return enriched.map((rec: any) => {
             const comp = competitorMap.get(rec.keyword_id);
             return {
                 ...rec,
