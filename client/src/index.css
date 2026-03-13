@@ -140,3 +140,97 @@ select option {
 .pulse-glow {
   animation: pulseGlow 2s ease-in-out infinite;
 }
+
+/* CYBERPUNK ANIMATIONS */
+
+/* Snappy slide-up pop */
+@keyframes popInUp {
+  0% { transform: translateY(20px) scale(0.95); opacity: 0; }
+  60% { transform: translateY(-2px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.animate-pop-in {
+  animation: popInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+
+/* Glitch effect for text */
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+.hover-glitch:hover {
+  animation: glitch 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+}
+
+/* Fast neon flicker */
+@keyframes flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 5px rgba(0, 251, 255, 0.2), 0 0 10px rgba(0, 251, 255, 0.4);
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.4;
+    text-shadow: none;
+  }
+}
+.animate-flicker {
+  animation: flicker 4s linear infinite;
+}
+
+/* Cyber Scanning Line */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+.cyber-scan-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: rgba(0, 251, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 251, 255, 1);
+  opacity: 0.2;
+  pointer-events: none;
+  animation: scanline 6s linear infinite;
+  z-index: 50;
+}
+
+/* Border pulse for cards */
+@keyframes borderPulse {
+  0% { border-color: rgba(0, 251, 255, 0.1); }
+  50% { border-color: rgba(0, 251, 255, 0.8); box-shadow: 0 0 15px rgba(0, 251, 255, 0.2); }
+  100% { border-color: rgba(0, 251, 255, 0.1); }
+}
+.hover-border-pulse:hover {
+  animation: borderPulse 1s ease-in-out infinite;
+}
+
+/* Intense button slide */
+.btn-primary {
+  @apply relative overflow-hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transform: skewX(-20deg);
+  animation: btnSweep 3s infinite;
+}
+@keyframes btnSweep {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}

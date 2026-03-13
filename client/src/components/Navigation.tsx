@@ -25,7 +25,7 @@ export default function Navigation() {
     }, []);
 
     const navItems = [
-        { path: '/', label: 'War Room' },
+        { path: '/dashboard', label: 'War Room' },
         { path: '/campaigns', label: 'Campaigns' },
         { path: '/optimize', label: 'Optimize' },
         { path: '/experiments', label: 'A/B Tests' },
@@ -45,7 +45,7 @@ export default function Navigation() {
             <div className="max-w-[1600px] mx-auto px-6">
                 <div className="flex items-center justify-between h-12">
                     {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2.5 shrink-0">
+                    <Link to="/dashboard" className="flex items-center gap-2.5 shrink-0">
                         <div className="w-7 h-7 bg-gradient-to-br from-prime-red to-prime-blue flex items-center justify-center chamfer-sm">
                             <span className="text-white font-black text-[10px] tracking-tighter">OP</span>
                         </div>

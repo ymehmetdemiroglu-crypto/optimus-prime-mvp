@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import AuthGuard from './components/AuthGuard';
 import Navigation from './components/Navigation';
 import Dashboard from './pages/Dashboard';
+import LandingPage from './pages/LandingPage';
 import Campaigns from './pages/Campaigns';
 import AiChat from './pages/AiChat';
 import Optimization from './pages/Optimization';
@@ -32,10 +33,11 @@ function App() {
         <AuthProvider>
             <Router>
                 <Routes>
+                    <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<Login />} />
                     <Route element={<AuthGuard />}>
                         <Route element={<AppLayout />}>
-                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/campaigns" element={<Campaigns />} />
                             <Route path="/optimize" element={<Optimization />} />
                             <Route path="/experiments" element={<Experiments />} />
